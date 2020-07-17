@@ -116,6 +116,7 @@ to detect the new compiler settings. The ``cppstd`` and ``libcxx`` settings need
 and then install WindNinja from Conan
 
 ::
+
     mkdir /opt/windninja && cd /opt/windninja #this could be any directory you wish to install to
     conan install windninja/3.5.3@CHM/stable -g deploy
 
