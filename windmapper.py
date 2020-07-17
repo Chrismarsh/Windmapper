@@ -23,6 +23,8 @@ from scipy import ndimage
 from os import environ
 from concurrent import futures
 from tqdm import tqdm
+import random
+import time
 
 gdal.UseExceptions()  # Enable exception support
 
@@ -344,6 +346,13 @@ write_farsite_atm = false """
 def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, nopt_x, nopt_y, nx, ny,
                  pixel_height, pixel_width, res_wind, targ_res, var_transform, wind_average, wn_exe, xmin, ymin,
                  ijwdir):
+
+    # when launching back to back windninja processes, there is a race condition in the WN check to determine
+    # if a directory is writeable
+    # https://github.com/firelab/windninja/issues/382
+    # so add a little jitter to the process invocation to 'fix' this.
+    time.sleep(random.random())
+
     i, j, wdir = ijwdir
 
     # Out directory
@@ -352,17 +361,30 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     fic_dem_in = user_output_dir + name_tmp + ".tif"
 
     name_base = dir_tmp + '/' + name_tmp + '_' + str(int(wdir)) + '_10_' + str(res_wind) + 'm_'
-    subprocess.check_call([wn_exe + ' ' +
-                           fic_config_WN + ' --elevation_file ' + fic_dem_in + ' --mesh_resolution ' + str(
-        res_wind) + ' --input_direction ' + str(int(wdir)) + ' --output_path ' + dir_tmp],
-                          stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE,
-                          shell=True)
+    try:
+        out = subprocess.check_output([wn_exe + ' ' +
+                               fic_config_WN + ' --elevation_file ' + fic_dem_in + ' --mesh_resolution ' + str(
+            res_wind) + ' --input_direction ' + str(int(wdir)) + ' --output_path ' + dir_tmp],
+                              # stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              shell=True)
+    except subprocess.SubprocessError as e:
+        print('WindNinja failed to run. Something has gone very wrong.'
+              'Please raise an issue on the WindMapper github https://github.com/Chrismarsh/Windmapper')
+        print(e.output())
+        raise RuntimeError()
+
     for var in var_transform:
         name_gen = name_base + var
-        subprocess.check_call([gdal_prefix + 'gdal_translate ' + name_gen + '.asc ' + name_gen + '.tif'],
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              shell=True)
+        try:
+            subprocess.check_call([gdal_prefix + 'gdal_translate ' + name_gen + '.asc ' + name_gen + '.tif'],
+                                  stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                  shell=True)
+        except subprocess.SubprocessError as e:
+            print('The file gdal was expecting to transform was not present. This is almost certainly due to this issue https://github.com/firelab/windninja/issues/382. '
+                  'Please raise an issue on the WindMapper github https://github.com/Chrismarsh/Windmapper')
+            raise RuntimeError()
 
         os.remove(name_gen + '.asc')
         os.remove(name_gen + '.prj')
