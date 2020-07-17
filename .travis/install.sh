@@ -10,7 +10,9 @@ if  [ "$TRAVIS_OS_NAME" = "osx" ]; then
 
     brew update || true
 
-    brew install gdal@3.1.0
+    cd /usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/Formula
+    git checkout 531a642ed504eb78890d8a5862086edd2572f2d4 -- gdal.rb
+    HOMEBREW_NO_AUTO_UPDATE=1 brew install gdal
     brew pin gdal
     brew upgrade || true
 #    brew install gdal@3.1.0 # || brew upgrade gdal
