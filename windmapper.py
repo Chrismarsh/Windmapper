@@ -351,7 +351,7 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     # if a directory is writeable
     # https://github.com/firelab/windninja/issues/382
     # so add a little jitter to the process invocation to 'fix' this.
-    time.sleep(random.random())
+    time.sleep(random.random()*5)
 
     i, j, wdir = ijwdir
 
