@@ -2,12 +2,12 @@
 
 set -e
 
+if [ "$test_conda" = "1" ]; then exit 0 ; fi
+
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     eval "$(pyenv init -)"
     pyenv activate Windmapper
 fi
-
-if [ "$test_conda" = "1" ]; then exit 0 ; fi
 
 pip install twine
 pip install conan
