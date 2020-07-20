@@ -9,9 +9,9 @@ if  [ "$TRAVIS_OS_NAME" = "osx" ]; then
     bash -c 'echo $TRAVIS_OS_NAME'
 
     brew update || true
-    brew pin gdal
+#    brew pin gdal
     brew upgrade || true
-#    brew install gdal@3.1.0 # || brew upgrade gdal
+#    brew install gdal  || brew upgrade gdal
 
    if [ "$test_conda" != "1" ]; then
       brew outdated pyenv || brew upgrade pyenv
