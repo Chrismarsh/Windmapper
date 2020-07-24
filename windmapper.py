@@ -394,10 +394,10 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     vel_tif = gdal.Open(name_base + 'vel.tif')
     vel = vel_tif.GetRasterBand(1).ReadAsArray()
     # Compute and save wind components
-    uu = -vel * np.sin(ang * np.pi / 180.)
+    uu = -1 * np.sin(ang * np.pi / 180.)
     fic_tif = name_base + 'U_large.tif'
     save_tif(uu, vel_tif, fic_tif)
-    vv = -vel * np.cos(ang * np.pi / 180.)
+    vv = -1 * np.cos(ang * np.pi / 180.)
     fic_tif = name_base + 'V_large.tif'
     save_tif(vv, vel_tif, fic_tif)
     # Compute smooth wind speed
