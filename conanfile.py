@@ -20,7 +20,7 @@ class WindNinjaConan(ConanFile):
         pass
 
     def requirements(self):
-        self.requires("windninja/3.5.3@CHM/stable" )
+        self.requires("windninja/3.6.0@CHM/stable" )
 
     def deploy(self):
         self.copy("*")  # copy from current package

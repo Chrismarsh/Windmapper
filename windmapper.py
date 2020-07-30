@@ -100,7 +100,7 @@ def main():
             exit(-1)
 
     # Method to compute average wind speed used to derive transfert function
-    wind_average = 'mean_tile'
+    wind_average = 'grid'
     targ_res = 1000
     if hasattr(X, 'wind_average'):
         wind_average = X.wind_average
