@@ -1,0 +1,163 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push or pull request events but only for the stable/proj7 branch
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 0' # run every week
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  MAKEFLAGS: "-j2"
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  
+
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ${{ matrix.cfg.os }}
+
+    # Conda needs a login shell so set this as the default
+    # however it will cause non-conda macos python runs to fail as the wrong
+    # python is picked up, see this bug report
+    # https://github.com/actions/setup-python/issues/132
+    # The work around is to put  the following before any shell runs
+    # export PATH="$pythonLocation:$PATH"
+    # however this won't fix pip so all pip invocations need to be
+    # pytho -m pip
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # python-version: [3.7]
+        # test-conda: ["sys-python"]
+        # use-conan: ['use-conan']
+
+        python-version: [3.7, 3.8]
+        test-conda: ["conda-python","sys-python"]
+        # use-conan: ['use-sys-lib'] #'use-conan', 
+
+        cfg:
+          - {os: "ubuntu-latest", compiler: "gcc", version: 7}
+          - {os: "ubuntu-latest", compiler: "gcc", version: 8}
+          - {os: "ubuntu-latest", compiler: "gcc", version: 9}
+          - {os: "macos-latest", compiler: "apple-clang", version: "12.0"}
+
+ 
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - uses: FranzDiebold/github-env-vars-action@v2
+
+      - name: Setup Python ${{ matrix.python-version }}
+        if: ${{ matrix.test-conda  == 'sys-python' }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Setup Conda ${{ matrix.python-version }}
+        uses: conda-incubator/setup-miniconda@v2
+        if: ${{ matrix.test-conda  == 'conda-python' }}
+        with:
+          activate-environment: mesher-env
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          export PATH="$pythonLocation:$PATH"
+          python -m pip install conan --upgrade
+          python -m pip install twine
+          python -m pip install conan
+          python -m pip install scikit-build>=0.10.0
+          python -m pip install ninja
+          python -m pip install wheel
+
+      - name: Install linux dependencies
+        if: ${{ matrix.cfg.os  == 'ubuntu-latest' }}
+        run: | 
+          export PATH="$pythonLocation:$PATH"
+          sudo apt-get install libgdal-dev
+          sudo apt-get install python-gdal
+          sudo apt-get install gdal-bin
+
+
+      - name: Install macos dependencies
+        if: ${{ matrix.cfg.os  == 'macos-latest' }}
+        run: | 
+          export PATH="$pythonLocation:$PATH"
+          brew install gdal
+          # brew install boost
+          # brew install cgal
+
+      # - name: Force Build (use conan)
+      #   if: ${{ matrix.use-conan == 'use-conan' }}
+      #   uses: allenevans/set-env@v2.0.0
+      #   with:
+      #     "USE_CONAN": "TRUE"
+
+      - name: env linux
+        if: ${{ matrix.cfg.os  == 'ubuntu-latest' }}
+        uses: allenevans/set-env@v2.0.0
+        with:
+          CC: gcc-${{ matrix.cfg.version }}
+          CXX: g++-${{ matrix.cfg.version }}
+
+      - name: env macos
+        if: ${{ matrix.cfg.os  == 'macos-latest' }}
+        uses: allenevans/set-env@v2.0.0
+        with:
+          CONAN_APPLE_CLANG_VERSIONS: ${{ matrix.cfg.version }}
+    
+      - name: Set envar
+        uses: allenevans/set-env@v2.0.0
+        with:
+          TEST_CONDA: ${{ matrix.test-conda }}
+
+      - name: Install and test
+        run: |
+          export PATH="$pythonLocation:$PATH"
+          python -m pip install .
+          # ldd `which mesher`
+          
+          cd "examples/flat_veg"
+          echo "running tests"
+          # bash ./runall.sh 
+          mesher.py flat_veg.py
+          # mesher --version
+
+      - name: Deploy
+        run: |
+          export PATH="$pythonLocation:$PATH"
+          if [ "$TEST_CONDA" = "sys-python" ]; then
+
+            if [ "$RUNNER_OS" = "macOS" ]; then
+              python setup.py sdist bdist_wheel
+            else
+              python setup.py sdist #no binary wheels on linux at the moment as we link against non PEP0513 .so
+              #https://www.python.org/dev/peps/pep-0513/
+            fi
+
+            if [[ $CI_REF_NAME == "stable/"* ]]; then
+                twine upload  --skip-existing dist/*
+            else
+              echo "Branch $CI_REF_NAME is not stable/*"
+            fi
+          fi
+              
+        env:
+          TWINE_PASSWORD: ${{secrets.TWINE_PASSWORD}}
+          TWINE_USERNAME: ${{secrets.TWINE_USERNAME}}
