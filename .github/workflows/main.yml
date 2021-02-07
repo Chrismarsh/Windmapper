@@ -131,13 +131,7 @@ jobs:
         run: |
           export PATH="$pythonLocation:$PATH"
           python -m pip install .
-          # ldd `which mesher`
-          
-          cd "examples/flat_veg"
-          echo "running tests"
-          # bash ./runall.sh 
-          mesher.py flat_veg.py
-          # mesher --version
+
 
       - name: Deploy
         run: |
