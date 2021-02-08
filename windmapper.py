@@ -234,6 +234,7 @@ write_farsite_atm = false """
         lat_mid = (lat_min + lat_max) / 2.
 
         # Download reference SRTM data
+        # This is a larger extent than what we will use so we ensure perfect coverage
         elevation.clip(bounds=(
             lon_min - delta_lon * fac, lat_min - delta_lat * fac, lon_max + delta_lon * fac, lat_max + delta_lat * fac),
             output=fic_download)
