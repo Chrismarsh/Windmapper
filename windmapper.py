@@ -175,7 +175,7 @@ write_farsite_atm = false """
         gdal_prefix = gdal_prefix.replace('\n', '')
         gdal_prefix += '/bin/'
     except:
-        raise BaseException(""" ERROR: Could not find gdal-config, please ensure it is installed and on $PATH """)
+        raise Exception(""" ERROR: Could not find gdal-config, please ensure it is installed and on $PATH """)
 
     # Wind direction increment
     delta_wind = 360. / ncat
@@ -239,14 +239,14 @@ write_farsite_atm = false """
             lon_min - delta_lon * fac, lat_min - delta_lat * fac, lon_max + delta_lon * fac, lat_max + delta_lat * fac),
             output=fic_download)
 
-        # Get corresponding UTM zone (center of the zone to extract)
-        nepsg_utm = int(32700 - round((45 + lat_mid) / 90, 0) * 100 + round((183 + lon_mid) / 6, 0))
+        LCC = '+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45'
         srs_out = osr.SpatialReference()
-        srs_out.ImportFromEPSG(nepsg_utm)
+        srs_out.ImportFromProj4(LCC)
 
         # Get bounding box to extract in utm using pyproj
         WGS84 = Proj(init='EPSG:4326')
-        inp = Proj(init='EPSG:' + str(nepsg_utm))
+        inp = Proj(LCC)
+        # inp = Proj(init='EPSG:' + str(nepsg_utm))
         xmin, ymin = transform(WGS84, inp, lon_min, lat_min)
         xmax, ymax = transform(WGS84, inp, lon_max, lat_max)
 
@@ -256,12 +256,22 @@ write_farsite_atm = false """
         com_string = exec_str % (gdal_prefix, fic_download, fic_utm, srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, 30, 30)
         subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
+
     # Get informations on projected file
     ds = gdal.Open(fic_utm)
     band = ds.GetRasterBand(1)
     gt = ds.GetGeoTransform()
     xmin = gt[0]
     ymax = gt[3]
+
+
+    wkt = ds.GetProjection()
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(wkt)
+    is_geographic = srs.IsGeographic()
+
+    if is_geographic:
+        raise Exception('Requires a projected DEM as input')
 
     pixel_width = gt[1]
     pixel_height = -gt[5]
