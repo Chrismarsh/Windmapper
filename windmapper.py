@@ -372,15 +372,20 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     fic_dem_in = user_output_dir + name_tmp + ".tif"
 
     name_base = dir_tmp + '/' + name_tmp + '_' + str(int(wdir)) + '_10_' + str(res_wind) + 'm_'
+
+    exec_cmd = wn_exe + ' ' + \
+               fic_config_WN + ' --elevation_file ' + fic_dem_in + ' --mesh_resolution ' + str(
+        res_wind) + ' --input_direction ' + str(int(wdir)) + ' --output_path ' + dir_tmp
     try:
-        out = subprocess.check_output([wn_exe + ' ' +
-                               fic_config_WN + ' --elevation_file ' + fic_dem_in + ' --mesh_resolution ' + str(
-            res_wind) + ' --input_direction ' + str(int(wdir)) + ' --output_path ' + dir_tmp],
+
+        out = subprocess.check_output([exec_cmd],
                               # stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
                               shell=True)
     except subprocess.SubprocessError as e:
-        print('WindNinja failed to run. Something has gone very wrong.'
+        print('WindNinja failed to run. Something has gone very wrong.\n'
+              'Run command was:\n'
+              f'{exec_cmd}\n'
               'Please raise an issue on the WindMapper github https://github.com/Chrismarsh/Windmapper')
         print(e.output())
         raise RuntimeError()
