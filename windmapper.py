@@ -13,7 +13,7 @@ import elevation
 import pdb, os, shutil
 import subprocess
 from osgeo import gdal, ogr, osr
-from pyproj import Proj, transform
+from pyproj import Proj, transform, Transformer
 import numpy as np
 import sys
 import importlib
@@ -88,6 +88,11 @@ def main():
         use_existing_dem = X.use_existing_dem
     if use_existing_dem:
         dem_filename = X.dem_filename
+
+        lat_min = X.lat_min
+        lat_max = X.lat_max
+        lon_min = X.lon_min
+        lon_max = X.lon_max
     else:
         lat_min = X.lat_min
         lat_max = X.lat_max
@@ -196,33 +201,52 @@ write_farsite_atm = false """
     # Define DEM file to use for WN
     fic_download = user_output_dir + 'ref-DEM.tif'
 
-    name_utm = 'ref-DEM-utm'
-    fic_utm = user_output_dir + '/' + name_utm + '.tif'
+    name_utm = 'ref-DEM-proj'
+    fic_lcc = user_output_dir + '/' + name_utm + '.tif'
 
+    LCC_proj = '+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45'
+    LCC_proj = None
     if use_existing_dem:
 
         # if we are using a user-provided dem, ensure there are no NoData values that border the
         # DEM which will cause issues
-
+        print('Preparing input DEM')
         # mask data values
+        print('...',end='')
         exec_str = """%sgdal_calc.py -A %s --outfile %s --NoDataValue 0 --calc="1*(A>0)" """ % (gdal_prefix,
             dem_filename, user_output_dir + 'out.tif')
-        subprocess.check_call([exec_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        subprocess.check_call([exec_str],   shell=True) #stdout=subprocess.PIPE,  stderr=subprocess.PIPE,
+        print('25...', end='')
 
         # convert to shp file
         exec_str = """%sgdal_polygonize.py -8 -b 1 -f "ESRI Shapefile" %s %s/pols """ % (gdal_prefix,
             user_output_dir + 'out.tif', user_output_dir)
-        subprocess.check_call([exec_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        subprocess.check_call([exec_str],  shell=True)
+        print('50...', end='')
 
         # clip original with the shpfile
         exec_str = """%sgdalwarp -of GTiff -cutline %s/pols/out.shp -crop_to_cutline -dstalpha %s %s """ % (gdal_prefix,
-            user_output_dir, dem_filename, fic_utm)
-        subprocess.check_call([exec_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-
+            user_output_dir, dem_filename, fic_lcc)
+        subprocess.check_call([exec_str], shell=True)
+        print('75...', end='')
         shutil.rmtree("%s/pols" % user_output_dir)
         os.remove("%s/out.tif" % user_output_dir)
+        print('100', end='')
+        print(' - done')
+
+
 
     else:
+
+        pts_to_shp( [[lat_max,lon_min],
+                    [lat_max, lon_max],
+                    [lat_min, lon_max],
+                    [lat_min,lon_min]],
+                     'user_bbox.shp',
+                     "epsg:4326",
+                     )
+
+        # need to ensure that we request a square domain in LCC projection
 
         # Properties of the bounding box
         delta_lat = lat_max - lat_min
@@ -230,57 +254,102 @@ write_farsite_atm = false """
 
         fac = 0.1  # Expansion factor to make sure that the downloaded SRTM tile is large enough
 
-        lon_mid = (lon_min + lon_max) / 2.
-        lat_mid = (lat_min + lat_max) / 2.
+        # This is a larger extent than what we will use so we ensure perfect coverage
+        lon_min = lon_min - delta_lon * fac
+        lat_min = lat_min - delta_lat * fac
+        lon_max = lon_max + delta_lon * fac
+        lat_max = lat_max + delta_lat * fac
+
+        LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min + lat_max)/2.0)
+
+        t_4326_to_lcc = Transformer.from_crs("epsg:4326", LCC_proj)
+        lon_lcc, lat_lcc = t_4326_to_lcc.transform(
+                                                   [lat_min, lat_min, lat_max, lat_max],
+                                                   [lon_min, lon_max, lon_min, lon_max],
+                                                   )
+        lon_lcc_square = [ min(lon_lcc), min(lon_lcc), max(lon_lcc), max(lon_lcc)]
+        lat_lcc_square = [ min(lat_lcc), max(lat_lcc), min(lat_lcc), max(lat_lcc)]
+
+        t_lcc_to_4326 = Transformer.from_crs(LCC_proj, "epsg:4326",)
+        new_4326_square_lat, new_4326_square_lon = t_lcc_to_4326.transform(lon_lcc_square, lat_lcc_square)
+
+        lat_max = max(new_4326_square_lat)
+        lat_min = min(new_4326_square_lat)
+        lon_max = max(new_4326_square_lon)
+        lon_min = min(new_4326_square_lon)
+
 
         # Download reference SRTM data
-        # This is a larger extent than what we will use so we ensure perfect coverage
-        elevation.clip(bounds=(
-            lon_min - delta_lon * fac, lat_min - delta_lat * fac, lon_max + delta_lon * fac, lat_max + delta_lat * fac),
-            output=fic_download)
-
-        LCC = '+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45'
-        srs_out = osr.SpatialReference()
-        srs_out.ImportFromProj4(LCC)
-
-        # Get bounding box to extract in utm using pyproj
-        WGS84 = Proj(init='EPSG:4326')
-        inp = Proj(LCC)
-        # inp = Proj(init='EPSG:' + str(nepsg_utm))
-        xmin, ymin = transform(WGS84, inp, lon_min, lat_min)
-        xmax, ymax = transform(WGS84, inp, lon_max, lat_max)
+        elevation.clip(bounds=(lon_min, lat_min, lon_max, lat_max), output=fic_download)
 
         # Extract a rectangular region of interest in utm at 30 m
+        # exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -te_srs "epsg:4326" -te %.30f %.30f %.30f %.30f  -tr %.30f ' \
+        #            '%.30f -r bilinear '
+        # com_string = exec_str % (gdal_prefix, fic_download, fic_lcc+'.tmp.tif', LCC_proj,
+        #                          X.lon_min, X.lat_min, X.lon_max, X.lat_max, 30, 30)
+        # subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        # # Extract a rectangular region of interest in utm at 30 m
         exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -te %.30f %.30f %.30f %.30f  -tr %.30f ' \
                    '%.30f -r bilinear '
-        com_string = exec_str % (gdal_prefix, fic_download, fic_utm, srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, 30, 30)
+        com_string = exec_str % (gdal_prefix, fic_download, fic_lcc+'.tmp.tif', LCC_proj,
+                                 min(lon_lcc), min(lat_lcc), max(lon_lcc), max(lat_lcc), 30, 30)
         subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
+        exec_str = '%sgdal_translate -ot Float32  %s %s' % (gdal_prefix, fic_lcc+'.tmp.tif', fic_lcc)
+        subprocess.check_call([exec_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        os.remove(fic_lcc+'.tmp.tif')
 
     # Get informations on projected file
-    ds = gdal.Open(fic_utm)
-    band = ds.GetRasterBand(1)
-    gt = ds.GetGeoTransform()
-    xmin = gt[0]
-    ymax = gt[3]
+    pts_to_shp([[lat_max, lon_min],
+                [lat_max, lon_max],
+                [lat_min, lon_max],
+                [lat_min, lon_min]],
+               'user_bbox.shp',
+               "epsg:4326",
+               )
 
-
+    ds = gdal.Open(fic_lcc)
     wkt = ds.GetProjection()
     srs = osr.SpatialReference()
     srs.ImportFromWkt(wkt)
-    is_geographic = srs.IsGeographic()
 
+    if LCC_proj is None:
+        LCC_proj = srs.ExportToProj4()
+
+    band = ds.GetRasterBand(1)
+    gt = ds.GetGeoTransform()
+    # xmin = gt[0]
+    # ymax = gt[3]
+
+    t_4326_to_merc = Transformer.from_crs("epsg:4326", LCC_proj, always_xy=True)
+    x_merc, y_merc = t_4326_to_merc.transform(
+        [lon_min, lon_max, lon_min, lon_max],
+        [lat_min, lat_min, lat_max, lat_max],
+    )
+
+    xmin = min(x_merc)
+    xmax = max(x_merc)
+    ymin = min(y_merc)
+    ymax = max(y_merc)
+
+
+    is_geographic = srs.IsGeographic()
     if is_geographic:
-        raise Exception('Requires a projected DEM as input')
+        raise Exception('Input DEM must be projected ')
+
+
 
     pixel_width = gt[1]
     pixel_height = -gt[5]
 
-    xmax = xmin + pixel_width * ds.RasterXSize
-    ymin = ymax - pixel_height * ds.RasterYSize
+    # xmax = xmin + pixel_width * ds.RasterXSize
+    # ymin = ymax - pixel_height * ds.RasterYSize
 
-    lenx = band.XSize * pixel_width
-    leny = band.YSize * pixel_height
+    lenx = xmax-xmin #band.XSize * pixel_width
+    leny = ymax-ymin #band.YSize * pixel_height
+
     len_wn = res_wind * nres
 
     # Number of Wind Ninja tiles
@@ -290,13 +359,17 @@ write_farsite_atm = false """
     nx = band.XSize / nopt_x
     ny = band.YSize / nopt_y
 
+    nx = lenx/pixel_width / nopt_x
+    ny = leny/pixel_height / nopt_y
+
     if nopt_x == 1 and nopt_y == 1:
         # DEM is small enough for WN
         name_tmp = 'tmp_0_0'
         fic_tmp = user_output_dir + name_tmp + ".tif"
-        shutil.copy(fic_utm, fic_tmp)
+        shutil.copy(fic_lcc, fic_tmp)
     else:
         # Split the DEM into smaller DEM for Wind Ninja
+
         for i in range(0, nopt_x):
             for j in range(0, nopt_y):
 
@@ -316,9 +389,70 @@ write_farsite_atm = false """
                 if j == 0. or j == (nopt_y - 1):
                     dely = ny * pixel_height + nadd * pixel_height
 
+                # get UTM zone
+                chunk_x_mid = (xbeg + delx/2.)
+                chunk_y_mid = (ybeg + dely/2.)
+
+                # this is actually the custom mercator proj
+                t_lcc_to_4326 = Transformer.from_crs(LCC_proj, "epsg:4326", always_xy=True)
+                lon_mid, lat_mid = t_lcc_to_4326.transform(chunk_x_mid, chunk_y_mid)
+
+                nepsg_utm = int(32700 - round((45 + lat_mid) / 90, 0) * 100 + round((183 + lon_mid) / 6, 0))
+
+                t_merc_to_utm = Transformer.from_crs(LCC_proj, f"epsg:{nepsg_utm}", always_xy=True)
+
+                utm_x, utm_y = t_merc_to_utm.transform(
+                    [xbeg, xbeg + delx, xbeg, xbeg + delx],
+                    [ybeg, ybeg       , ybeg + dely, ybeg + dely]
+                )
+                x_utm_square = [min(utm_x), min(utm_x), max(utm_x), max(utm_x)]
+                y_utm_square = [min(utm_y), max(utm_y), min(utm_y), max(utm_y)]
+
+                srs_out = osr.SpatialReference()
+                srs_out.ImportFromEPSG(nepsg_utm)
+                pts_to_shp([[max(utm_y), min(utm_x)],
+                            [max(utm_y), max(utm_x)],
+                            [min(utm_y), max(utm_x)],
+                            [min(utm_y), min(utm_x)]],
+                           f'utm_{i}_{j}.shp',
+                           srs_out.ExportToProj4(),
+                           )
+
+
+                # t_utm_to_merc = Transformer.from_crs(f"epsg:{nepsg_utm}", "epsg:4326", always_xy=True)
+                # new_utm_square_x, new_utm_square_y = t_utm_to_merc.transform(x_utm_square, y_utm_square)
+                #
+                #
+                # yend = max(new_utm_square_y)
+                # ybeg = min(new_utm_square_y)
+                # xend = max(new_utm_square_x)
+                # xbeg = min(new_utm_square_x)
+
+
                 name_tmp = 'tmp_' + str(i) + "_" + str(j)
                 fic_tmp = user_output_dir + name_tmp + ".tif"
-                clip_tif(fic_utm, fic_tmp, xbeg, xbeg + delx, ybeg, ybeg + dely, gdal_prefix)
+                # clip_tif('/Users/chris/Documents/science/code/SnowCast/domain/cordillera/ref-DEM-wgs84.tif', fic_tmp+'.tmp.tif', xbeg, xend, ybeg, yend, gdal_prefix)
+
+                srs_out = osr.SpatialReference()
+                srs_out.ImportFromEPSG(nepsg_utm)
+
+                exec_str = '%sgdalwarp -overwrite -te %f %f %f %f -r "cubicspline" -et 0 -cutline %s -crop_to_cutline -dstnodata -9999 -t_srs "%s" %s %s'
+
+                com_string = exec_str % (gdal_prefix,
+                                         min(utm_x), min(utm_y),  max(utm_x), max(utm_y),
+                                         f'/Users/chris/Documents/science/code/SnowCast/domain/cordillera/utm_{i}_{j}.shp',
+                                         srs_out.ExportToProj4(),
+                                         '/Users/chris/Documents/science/code/SnowCast/domain/cordillera/ref-DEM-wgs84.tif',
+                                         fic_tmp+'.tmp.tif')
+                subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+                # absolutely make sure there are no missing data. From the cut above can sometimes be missing 1px along the edge
+                exec_str = '%sgdal_fillnodata.py %s %s'
+                com_string = exec_str % (gdal_prefix, fic_tmp+'.tmp.tif', fic_tmp)
+                subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+                print(fic_tmp)
+
 
     # Build WindNinja winds maps
     x_y_wdir = itertools.product(range(0, nopt_x),
@@ -331,6 +465,8 @@ write_farsite_atm = false """
         dir_tmp = user_output_dir + 'tmp_dir' + "_" + str(i) + "_" + str(j)
         if not os.path.isdir(dir_tmp):
             os.makedirs(dir_tmp)
+    raise Exception('Remove me')
+
 
     print(f'Running WindNinja on {len(x_y_wdir)} combinations of direction and sub-area. Please be patient...')
     with futures.ProcessPoolExecutor(max_workers=nworkers) as executor:
@@ -398,17 +534,19 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
                                     stderr=subprocess.PIPE,
                                   shell=True)
         except subprocess.SubprocessError as e:
-            print('The file gdal was expecting to transform was not present. This is almost certainly due to this issue https://github.com/firelab/windninja/issues/382. '
+            print('The file gdal was expecting to transform was not present. This is almost certainly due to this issue https://github.com/firelab/windninja/issues/382 '
                   'Please raise an issue on the WindMapper github https://github.com/Chrismarsh/Windmapper')
             raise RuntimeError()
 
         os.remove(name_gen + '.asc')
         os.remove(name_gen + '.prj')
+
     # Read geotif for angle and velocity to compute speed up
     gtif = gdal.Open(name_base + 'ang.tif')
     ang = gtif.GetRasterBand(1).ReadAsArray()
     vel_tif = gdal.Open(name_base + 'vel.tif')
     vel = vel_tif.GetRasterBand(1).ReadAsArray()
+
     # Compute and save wind components
     uu = -1 * np.sin(ang * np.pi / 180.)
     fic_tif = name_base + 'U_large.tif'
@@ -416,6 +554,7 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     vv = -1 * np.cos(ang * np.pi / 180.)
     fic_tif = name_base + 'V_large.tif'
     save_tif(vv, vel_tif, fic_tif)
+
     # Compute smooth wind speed
     if wind_average == 'grid':
         nsize = targ_res / res_wind
@@ -424,28 +563,69 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     elif wind_average == 'mean_tile':
         vv_large = np.mean(vel)
         fic_tif = name_base + 'spd_up_tile_large.tif'
+
     # Compute local speed up and save
     loc_speed_up = vel / vv_large
     save_tif(loc_speed_up, vel_tif, fic_tif)
+
     # Reduce the extent of the final tif
-    xbeg = xmin + i * nx * pixel_width
-    ybeg = ymin + j * ny * pixel_height
-    delx = nx * pixel_width
-    dely = ny * pixel_height
-    for var in list_tif_2_vrt:
-        fic_tif = name_base + var + '_large.tif'
-        fic_tif_fin = name_base + var + '.tif'
-        if nopt_x == 1 and nopt_y == 1:
-            shutil.copy(fic_tif, fic_tif_fin)
-        else:
-            clip_tif(fic_tif, fic_tif_fin, xbeg, xbeg + delx, ybeg, ybeg + dely, gdal_prefix)
-        os.remove(fic_tif)
+    # xbeg = xmin + i * nx * pixel_width
+    # ybeg = ymin + j * ny * pixel_height
+    # delx = nx * pixel_width
+    # dely = ny * pixel_height
+    #
+    # for var in list_tif_2_vrt:
+    #     fic_tif = name_base + var + '_large.tif'
+    #     fic_tif_fin = name_base + var + '.tif'
+    #     if nopt_x == 1 and nopt_y == 1:
+    #         shutil.copy(fic_tif, fic_tif_fin)
+    #     else:
+    #         clip_tif(fic_tif, fic_tif_fin, xbeg, xbeg + delx, ybeg, ybeg + dely, gdal_prefix)
+    #     os.remove(fic_tif)
 
 
 def clip_tif(fic_in, fic_out, xmin, xmax, ymin, ymax, gdal_prefix):
-    com_string = gdal_prefix + "gdal_translate -of GTIFF -projwin " + str(xmin) + ", " + str(ymax) + ", " + str(xmax) + ", " + str(
-        ymin) + " " + fic_in + " " + fic_out
-    subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    # projwin by default expressed in the SRS of the dataset
+    com_string = gdal_prefix + "gdal_translate -of GTIFF  -ot Float32 -projwin " + \
+                 str(xmin) + ", " + str(ymax) + ", " + str(xmax) + ", " + str(ymin) +\
+                 " " + fic_in + " " + fic_out
+    print(com_string)
+    subprocess.check_call([com_string], shell=True)# stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+
+def pts_to_shp(points, fname, proj):
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+
+    try:
+        os.remove(fname)  # remove if existing
+    except OSError:
+        pass
+
+    shp_file = driver.CreateDataSource(fname)
+
+    srs_out = osr.SpatialReference()
+    srs_out.ImportFromProj4(proj)
+
+    layer = shp_file.CreateLayer('mesh', srs_out, ogr.wkbPolygon)
+    layer.CreateField(ogr.FieldDefn('Extent', ogr.OFTReal))
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+
+    for p in points:
+        ring.AddPoint(p[1], p[0])
+
+    #complete the ring
+    ring.AddPoint(points[0][1], points[0][0])
+    tpoly = ogr.Geometry(ogr.wkbPolygon)
+    tpoly.AddGeometry(ring)
+
+    feature = ogr.Feature(layer.GetLayerDefn())
+    feature.SetGeometry(tpoly)
+    layer.CreateFeature(feature)
+
+    shp_file.FlushCache()
+    shp_file = None  # close file
+
+
 
 
 def save_tif(var, inDs, fic):
