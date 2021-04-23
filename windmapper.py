@@ -434,6 +434,7 @@ write_farsite_atm = false """
                 com_string = exec_str % (gdal_prefix, fic_tmp+'.tmp.tif', fic_tmp)
                 subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
+                os.remove(fic_tmp+'.tmp.tif')
                 print(fic_tmp)
 
 
@@ -467,9 +468,9 @@ write_farsite_atm = false """
                 # cmd = "find " + user_output_dir[0:-1] + " -type f -name '*_" + str(int(wdir)) + "_10_" + str(
                 #     res_wind) + "m_" + var + "*.tif' -exec " + gdal_prefix + "gdalbuildvrt " + name_vrt + " {} +"
 
-                name_tif = user_output_dir + name_utm + '_' + str(int(wdir)) + '_' + var + '.tif'
+                name_tif = user_output_dir + name_utm + '_' + str(int(wdir)) + '_' + var
                 cmd = "find " + user_output_dir[0:-1] + " -type f -name '*_" + str(int(wdir)) + "_10_" + str(
-                    res_wind) + "m_" + var + "*.tif' -exec rio_merge.py " +  name_tif + " {} +"
+                    res_wind) + "m_" + var + "*.tif' -exec rio_merge.py " +  name_tif + '.tmp.tif' + " {} +"
                 subprocess.check_call([cmd], stdout=subprocess.PIPE,
                                       shell=True)
 
@@ -480,9 +481,10 @@ write_farsite_atm = false """
                                          X.lon_min, X.lat_min, X.lon_max, X.lat_max,
                                          os.path.join(user_output_dir,'shp', 'user_bbox.shp'),
                                          srs_out.ExportToProj4(),
-                                         name_tif,
-                                         name_tif+'.wgs84.tif')
+                                         name_tif+'.tmp.tif',
+                                         name_tif+'.tif')
                 subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+                os.remove(name_tif+'.tmp.tif')
 
             pbar.update(1)
 
