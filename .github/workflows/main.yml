@@ -49,10 +49,12 @@ jobs:
         # use-conan: ['use-sys-lib'] #'use-conan', 
 
         cfg:
-          - {os: "ubuntu-latest", compiler: "gcc", version: 7}
-          - {os: "ubuntu-latest", compiler: "gcc", version: 8}
-          - {os: "ubuntu-latest", compiler: "gcc", version: 9}
-          - {os: "macos-latest", compiler: "apple-clang", version: "12.0"}
+          - {os: "ubuntu-18.04", compiler: "gcc", version: 7}
+          - {os: "ubuntu-18.04", compiler: "gcc", version: 9}
+          - {os: "ubuntu-18.04", compiler: "gcc", version: 10}
+          - {os: "ubuntu-20.04", compiler: "gcc", version: 9}
+          - {os: "ubuntu-20.04", compiler: "gcc", version: 10}
+          - {os: "macos-10.15", compiler: "apple-clang", version: "12.0"}
 
  
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -87,16 +89,24 @@ jobs:
           python -m pip install wheel
 
       - name: Install linux dependencies
-        if: ${{ matrix.cfg.os  == 'ubuntu-latest' }}
+        if: startsWith( matrix.cfg.os, 'ubuntu' )
+        env:
+          UBUNTU_VER: ${{ matrix.cfg.os }}
         run: | 
           export PATH="$pythonLocation:$PATH"
+          sudo apt-get update
           sudo apt-get install libgdal-dev
-          sudo apt-get install python-gdal
           sudo apt-get install gdal-bin
+
+          if [[ "$UBUNTU_VER" = "ubuntu-20.04" ]]; then
+            sudo apt-get install python3-gdal
+          else
+            sudo apt-get install python-gdal
+          fi
 
 
       - name: Install macos dependencies
-        if: ${{ matrix.cfg.os  == 'macos-latest' }}
+        if: startsWith( matrix.cfg.os, 'macos' )
         run: | 
           export PATH="$pythonLocation:$PATH"
           brew install gdal
@@ -110,14 +120,14 @@ jobs:
       #     "USE_CONAN": "TRUE"
 
       - name: env linux
-        if: ${{ matrix.cfg.os  == 'ubuntu-latest' }}
+        if: startsWith( matrix.cfg.os, 'ubuntu' )
         uses: allenevans/set-env@v2.0.0
         with:
           CC: gcc-${{ matrix.cfg.version }}
           CXX: g++-${{ matrix.cfg.version }}
 
       - name: env macos
-        if: ${{ matrix.cfg.os  == 'macos-latest' }}
+        if: startsWith( matrix.cfg.os, 'macos'
         uses: allenevans/set-env@v2.0.0
         with:
           CONAN_APPLE_CLANG_VERSIONS: ${{ matrix.cfg.version }}
