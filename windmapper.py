@@ -250,17 +250,17 @@ write_farsite_atm = false """
         fac = 0.1  # Expansion factor to make sure that the downloaded SRTM tile is large enough
 
         # This is a larger extent than what we will use so we ensure perfect coverage
-        lon_min = lon_min - delta_lon * fac
-        lat_min = lat_min - delta_lat * fac
-        lon_max = lon_max + delta_lon * fac
-        lat_max = lat_max + delta_lat * fac
+        lon_min_expanded = lon_min - delta_lon * fac
+        lat_min_expanded = lat_min - delta_lat * fac
+        lon_max_expanded = lon_max + delta_lon * fac
+        lat_max_expanded = lat_max + delta_lat * fac
 
-        LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min + lat_max)/2.0)
+        LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min_expanded + lat_max_expanded)/2.0)
 
         t_4326_to_lcc = Transformer.from_crs("epsg:4326", LCC_proj)
         lon_lcc, lat_lcc = t_4326_to_lcc.transform(
-                                                   [lat_min, lat_min, lat_max, lat_max],
-                                                   [lon_min, lon_max, lon_min, lon_max],
+                                                   [lat_min_expanded, lat_min_expanded, lat_max_expanded, lat_max_expanded],
+                                                   [lon_min_expanded, lon_max_expanded, lon_min_expanded, lon_max_expanded],
                                                    )
         lon_lcc_square = [ min(lon_lcc), min(lon_lcc), max(lon_lcc), max(lon_lcc)]
         lat_lcc_square = [ min(lat_lcc), max(lat_lcc), min(lat_lcc), max(lat_lcc)]
@@ -268,14 +268,14 @@ write_farsite_atm = false """
         t_merc_to_4326 = Transformer.from_crs(LCC_proj, "epsg:4326",)
         new_4326_square_lat, new_4326_square_lon = t_merc_to_4326.transform(lon_lcc_square, lat_lcc_square)
 
-        lat_max = max(new_4326_square_lat)
-        lat_min = min(new_4326_square_lat)
-        lon_max = max(new_4326_square_lon)
-        lon_min = min(new_4326_square_lon)
+        lat_max_expanded = max(new_4326_square_lat)
+        lat_min_expanded = min(new_4326_square_lat)
+        lon_max_expanded = max(new_4326_square_lon)
+        lon_min_expanded = min(new_4326_square_lon)
 
 
         # Download reference SRTM data
-        elevation.clip(bounds=(lon_min, lat_min, lon_max, lat_max), output=fic_download)
+        elevation.clip(bounds=(lon_min_expanded, lat_min_expanded, lon_max_expanded, lat_max_expanded), output=fic_download)
 
         # Extract a rectangular region of interest in utm at 30 m
         # exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -te_srs "epsg:4326" -te %.30f %.30f %.30f %.30f  -tr %.30f ' \
@@ -302,16 +302,14 @@ write_farsite_atm = false """
 
         os.remove(fic_lcc+'.tmp.tif')
 
-    # Get informations on projected file
 
     srs_out = osr.SpatialReference()
     srs_out.ImportFromEPSG(4326)
 
-    # use X. here as we may have modified our internal ones to grow the domain
-    pts_to_shp([[X.lat_max, X.lon_min],
-                [X.lat_max, X.lon_max],
-                [X.lat_min, X.lon_max],
-                [X.lat_min, X.lon_min]],
+    pts_to_shp([[lat_max, lon_min],
+                [lat_max, lon_max],
+                [lat_min, lon_max],
+                [lat_min, lon_min]],
                os.path.join(user_output_dir,'shp','user_bbox.shp'),
                srs_out.ExportToProj4(),
                )
