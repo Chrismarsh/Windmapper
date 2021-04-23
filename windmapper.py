@@ -25,6 +25,7 @@ from concurrent import futures
 from tqdm import tqdm
 import random
 import time
+import rasterio as rio
 
 gdal.UseExceptions()  # Enable exception support
 
@@ -173,6 +174,8 @@ write_farsite_atm = false """
         with open(fic_config_WN, 'w') as fic_file:
             fic_file.write(fic_config)
 
+    os.mkdir(os.path.join(user_output_dir, 'shp'))
+
     # we need to make sure we pickup the right paths to all the gdal scripts
     gdal_prefix = ''
     try:
@@ -238,14 +241,6 @@ write_farsite_atm = false """
 
     else:
 
-        pts_to_shp( [[lat_max,lon_min],
-                    [lat_max, lon_max],
-                    [lat_min, lon_max],
-                    [lat_min,lon_min]],
-                     'user_bbox.shp',
-                     "epsg:4326",
-                     )
-
         # need to ensure that we request a square domain in LCC projection
 
         # Properties of the bounding box
@@ -270,8 +265,8 @@ write_farsite_atm = false """
         lon_lcc_square = [ min(lon_lcc), min(lon_lcc), max(lon_lcc), max(lon_lcc)]
         lat_lcc_square = [ min(lat_lcc), max(lat_lcc), min(lat_lcc), max(lat_lcc)]
 
-        t_lcc_to_4326 = Transformer.from_crs(LCC_proj, "epsg:4326",)
-        new_4326_square_lat, new_4326_square_lon = t_lcc_to_4326.transform(lon_lcc_square, lat_lcc_square)
+        t_merc_to_4326 = Transformer.from_crs(LCC_proj, "epsg:4326",)
+        new_4326_square_lat, new_4326_square_lon = t_merc_to_4326.transform(lon_lcc_square, lat_lcc_square)
 
         lat_max = max(new_4326_square_lat)
         lat_min = min(new_4326_square_lat)
@@ -290,10 +285,16 @@ write_farsite_atm = false """
         # subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
         # # Extract a rectangular region of interest in utm at 30 m
-        exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -te %.30f %.30f %.30f %.30f  -tr %.30f ' \
+        # exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -te %.30f %.30f %.30f %.30f  -tr %.30f ' \
+        #            '%.30f -r bilinear '
+        # com_string = exec_str % (gdal_prefix, fic_download, fic_lcc+'.tmp.tif', LCC_proj,
+        #                          min(lon_lcc), min(lat_lcc), max(lon_lcc), max(lat_lcc), 30, 30)
+        # subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s"  -tr %.30f ' \
                    '%.30f -r bilinear '
         com_string = exec_str % (gdal_prefix, fic_download, fic_lcc+'.tmp.tif', LCC_proj,
-                                 min(lon_lcc), min(lat_lcc), max(lon_lcc), max(lat_lcc), 30, 30)
+                                 30, 30)
         subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
         exec_str = '%sgdal_translate -ot Float32  %s %s' % (gdal_prefix, fic_lcc+'.tmp.tif', fic_lcc)
@@ -302,12 +303,17 @@ write_farsite_atm = false """
         os.remove(fic_lcc+'.tmp.tif')
 
     # Get informations on projected file
-    pts_to_shp([[lat_max, lon_min],
-                [lat_max, lon_max],
-                [lat_min, lon_max],
-                [lat_min, lon_min]],
-               'user_bbox.shp',
-               "epsg:4326",
+
+    srs_out = osr.SpatialReference()
+    srs_out.ImportFromEPSG(4326)
+
+    # use X. here as we may have modified our internal ones to grow the domain
+    pts_to_shp([[X.lat_max, X.lon_min],
+                [X.lat_max, X.lon_max],
+                [X.lat_min, X.lon_max],
+                [X.lat_min, X.lon_min]],
+               os.path.join(user_output_dir,'shp','user_bbox.shp'),
+               srs_out.ExportToProj4(),
                )
 
     ds = gdal.Open(fic_lcc)
@@ -320,8 +326,6 @@ write_farsite_atm = false """
 
     band = ds.GetRasterBand(1)
     gt = ds.GetGeoTransform()
-    # xmin = gt[0]
-    # ymax = gt[3]
 
     t_4326_to_merc = Transformer.from_crs("epsg:4326", LCC_proj, always_xy=True)
     x_merc, y_merc = t_4326_to_merc.transform(
@@ -339,25 +343,17 @@ write_farsite_atm = false """
     if is_geographic:
         raise Exception('Input DEM must be projected ')
 
-
-
     pixel_width = gt[1]
     pixel_height = -gt[5]
 
-    # xmax = xmin + pixel_width * ds.RasterXSize
-    # ymin = ymax - pixel_height * ds.RasterYSize
-
-    lenx = xmax-xmin #band.XSize * pixel_width
-    leny = ymax-ymin #band.YSize * pixel_height
+    lenx = xmax-xmin
+    leny = ymax-ymin
 
     len_wn = res_wind * nres
 
     # Number of Wind Ninja tiles
     nopt_x = int(lenx // len_wn + 1)
     nopt_y = int(leny // len_wn + 1)
-
-    nx = band.XSize / nopt_x
-    ny = band.YSize / nopt_y
 
     nx = lenx/pixel_width / nopt_x
     ny = leny/pixel_height / nopt_y
@@ -367,9 +363,10 @@ write_farsite_atm = false """
         name_tmp = 'tmp_0_0'
         fic_tmp = user_output_dir + name_tmp + ".tif"
         shutil.copy(fic_lcc, fic_tmp)
-    else:
-        # Split the DEM into smaller DEM for Wind Ninja
 
+    else:
+
+        # Split the DEM into smaller DEM for Wind Ninja
         for i in range(0, nopt_x):
             for j in range(0, nopt_y):
 
@@ -394,8 +391,8 @@ write_farsite_atm = false """
                 chunk_y_mid = (ybeg + dely/2.)
 
                 # this is actually the custom mercator proj
-                t_lcc_to_4326 = Transformer.from_crs(LCC_proj, "epsg:4326", always_xy=True)
-                lon_mid, lat_mid = t_lcc_to_4326.transform(chunk_x_mid, chunk_y_mid)
+                t_merc_to_4326 = Transformer.from_crs(LCC_proj, "epsg:4326", always_xy=True)
+                lon_mid, lat_mid = t_merc_to_4326.transform(chunk_x_mid, chunk_y_mid)
 
                 nepsg_utm = int(32700 - round((45 + lat_mid) / 90, 0) * 100 + round((183 + lon_mid) / 6, 0))
 
@@ -405,44 +402,32 @@ write_farsite_atm = false """
                     [xbeg, xbeg + delx, xbeg, xbeg + delx],
                     [ybeg, ybeg       , ybeg + dely, ybeg + dely]
                 )
-                x_utm_square = [min(utm_x), min(utm_x), max(utm_x), max(utm_x)]
-                y_utm_square = [min(utm_y), max(utm_y), min(utm_y), max(utm_y)]
 
                 srs_out = osr.SpatialReference()
                 srs_out.ImportFromEPSG(nepsg_utm)
+
+
                 pts_to_shp([[max(utm_y), min(utm_x)],
                             [max(utm_y), max(utm_x)],
                             [min(utm_y), max(utm_x)],
                             [min(utm_y), min(utm_x)]],
-                           f'utm_{i}_{j}.shp',
+                           os.path.join(user_output_dir,'shp',f'utm_{i}_{j}.shp'),
                            srs_out.ExportToProj4(),
                            )
 
-
-                # t_utm_to_merc = Transformer.from_crs(f"epsg:{nepsg_utm}", "epsg:4326", always_xy=True)
-                # new_utm_square_x, new_utm_square_y = t_utm_to_merc.transform(x_utm_square, y_utm_square)
-                #
-                #
-                # yend = max(new_utm_square_y)
-                # ybeg = min(new_utm_square_y)
-                # xend = max(new_utm_square_x)
-                # xbeg = min(new_utm_square_x)
-
-
                 name_tmp = 'tmp_' + str(i) + "_" + str(j)
                 fic_tmp = user_output_dir + name_tmp + ".tif"
-                # clip_tif('/Users/chris/Documents/science/code/SnowCast/domain/cordillera/ref-DEM-wgs84.tif', fic_tmp+'.tmp.tif', xbeg, xend, ybeg, yend, gdal_prefix)
 
                 srs_out = osr.SpatialReference()
                 srs_out.ImportFromEPSG(nepsg_utm)
 
-                exec_str = '%sgdalwarp -overwrite -te %f %f %f %f -r "cubicspline" -et 0 -cutline %s -crop_to_cutline -dstnodata -9999 -t_srs "%s" %s %s'
+                exec_str = '%sgdalwarp -overwrite -te %f %f %f %f -tr 30 30 -r "cubicspline" -et 0 -cutline %s -crop_to_cutline -dstnodata -9999 -t_srs "%s" %s %s'
 
                 com_string = exec_str % (gdal_prefix,
                                          min(utm_x), min(utm_y),  max(utm_x), max(utm_y),
-                                         f'/Users/chris/Documents/science/code/SnowCast/domain/cordillera/utm_{i}_{j}.shp',
+                                         os.path.join(user_output_dir,'shp',f'utm_{i}_{j}.shp'),
                                          srs_out.ExportToProj4(),
-                                         '/Users/chris/Documents/science/code/SnowCast/domain/cordillera/ref-DEM-wgs84.tif',
+                                         fic_download,
                                          fic_tmp+'.tmp.tif')
                 subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
@@ -465,8 +450,6 @@ write_farsite_atm = false """
         dir_tmp = user_output_dir + 'tmp_dir' + "_" + str(i) + "_" + str(j)
         if not os.path.isdir(dir_tmp):
             os.makedirs(dir_tmp)
-    raise Exception('Remove me')
-
 
     print(f'Running WindNinja on {len(x_y_wdir)} combinations of direction and sub-area. Please be patient...')
     with futures.ProcessPoolExecutor(max_workers=nworkers) as executor:
@@ -482,12 +465,30 @@ write_farsite_atm = false """
     with tqdm(total=len(nwind)) as pbar:
         for wdir in nwind:
             for var in list_tif_2_vrt:
-                name_vrt = user_output_dir + name_utm + '_' + str(int(wdir)) + '_' + var + '.vrt'
+                # name_vrt = user_output_dir + name_utm + '_' + str(int(wdir)) + '_' + var + '.vrt'
+                # cmd = "find " + user_output_dir[0:-1] + " -type f -name '*_" + str(int(wdir)) + "_10_" + str(
+                #     res_wind) + "m_" + var + "*.tif' -exec " + gdal_prefix + "gdalbuildvrt " + name_vrt + " {} +"
+
+                name_tif = user_output_dir + name_utm + '_' + str(int(wdir)) + '_' + var + '.tif'
                 cmd = "find " + user_output_dir[0:-1] + " -type f -name '*_" + str(int(wdir)) + "_10_" + str(
-                    res_wind) + "m_" + var + "*.tif' -exec " + gdal_prefix+ "gdalbuildvrt " + name_vrt + " {} +"
+                    res_wind) + "m_" + var + "*.tif' -exec /Users/chris/Documents/science/code/Windmapper/rio_merge.py " +  name_tif + " {} +"
                 subprocess.check_call([cmd], stdout=subprocess.PIPE,
                                       shell=True)
+
+                srs_out = osr.SpatialReference()
+                srs_out.ImportFromEPSG(4326)
+                exec_str = '%sgdalwarp -overwrite -te %f %f %f %f -r "cubicspline" -et 0 -cutline %s -crop_to_cutline -dstnodata -9999 -t_srs "%s" %s %s'
+                com_string = exec_str % (gdal_prefix,
+                                         X.lon_min, X.lat_min, X.lon_max, X.lat_max,
+                                         os.path.join(user_output_dir,'shp', 'user_bbox.shp'),
+                                         srs_out.ExportToProj4(),
+                                         name_tif,
+                                         name_tif+'.wgs84.tif')
+                subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
             pbar.update(1)
+
+
 
 
 def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, nopt_x, nopt_y, nx, ny,
@@ -550,10 +551,15 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     # Compute and save wind components
     uu = -1 * np.sin(ang * np.pi / 180.)
     fic_tif = name_base + 'U_large.tif'
-    save_tif(uu, vel_tif, fic_tif)
+    save_tif(uu, vel_tif, fic_tif+'.tmp.tif')
+    reproject_to_wgs84(fic_tif+'.tmp.tif', fic_tif, gdal_prefix)
+    os.remove(fic_tif+'.tmp.tif')
+
     vv = -1 * np.cos(ang * np.pi / 180.)
     fic_tif = name_base + 'V_large.tif'
-    save_tif(vv, vel_tif, fic_tif)
+    save_tif(vv, vel_tif, fic_tif+'.tmp.tif')
+    reproject_to_wgs84(fic_tif + '.tmp.tif', fic_tif, gdal_prefix)
+    os.remove(fic_tif + '.tmp.tif')
 
     # Compute smooth wind speed
     if wind_average == 'grid':
@@ -566,7 +572,9 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
 
     # Compute local speed up and save
     loc_speed_up = vel / vv_large
-    save_tif(loc_speed_up, vel_tif, fic_tif)
+    save_tif(loc_speed_up, vel_tif, fic_tif + '.tmp.tif')
+    reproject_to_wgs84(fic_tif + '.tmp.tif', fic_tif, gdal_prefix)
+    os.remove(fic_tif + '.tmp.tif')
 
     # Reduce the extent of the final tif
     # xbeg = xmin + i * nx * pixel_width
@@ -582,6 +590,12 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     #     else:
     #         clip_tif(fic_tif, fic_tif_fin, xbeg, xbeg + delx, ybeg, ybeg + dely, gdal_prefix)
     #     os.remove(fic_tif)
+
+def reproject_to_wgs84(fin, fout, gdal_prefix):
+    exec_str = '%sgdalwarp -overwrite -r "cubicspline" -t_srs "+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45" %s %s'   #epsg:4326
+
+    com_string = exec_str % (gdal_prefix, fin, fout)
+    subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
 
 def clip_tif(fic_in, fic_out, xmin, xmax, ymin, ymax, gdal_prefix):
