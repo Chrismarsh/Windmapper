@@ -38,7 +38,7 @@ setup(name='windmapper',
       url="https://github.com/Chrismarsh/Windmapper",
       include_package_data=True,
       cmake_args=['-DCMAKE_BUILD_TYPE=Release'],
-      scripts=["windmapper.py","cli_massSolver.cfg"],
+      scripts=["windmapper.py",'rio_merge.py',"cli_massSolver.cfg"],
       install_requires=['pygdal'+get_installed_gdal_version(),'numpy','scipy','elevation','pyproj','tqdm'],
       setup_requires=setup_requires,
       python_requires='>=3.6'

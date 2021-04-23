@@ -469,7 +469,7 @@ write_farsite_atm = false """
 
                 name_tif = user_output_dir + name_utm + '_' + str(int(wdir)) + '_' + var + '.tif'
                 cmd = "find " + user_output_dir[0:-1] + " -type f -name '*_" + str(int(wdir)) + "_10_" + str(
-                    res_wind) + "m_" + var + "*.tif' -exec /Users/chris/Documents/science/code/Windmapper/rio_merge.py " +  name_tif + " {} +"
+                    res_wind) + "m_" + var + "*.tif' -exec rio_merge.py " +  name_tif + " {} +"
                 subprocess.check_call([cmd], stdout=subprocess.PIPE,
                                       shell=True)
 
