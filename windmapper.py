@@ -576,6 +576,9 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     reproject_to_wgs84(fic_tif + '.tmp.tif', fic_tif, gdal_prefix)
     os.remove(fic_tif + '.tmp.tif')
 
+    #do this at the end so if we raise an exception the file will still exist to aid in debugging
+    os.remove(fic_dem_in)
+
     # Reduce the extent of the final tif
     # xbeg = xmin + i * nx * pixel_width
     # ybeg = ymin + j * ny * pixel_height
