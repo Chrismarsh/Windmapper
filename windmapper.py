@@ -445,7 +445,7 @@ write_farsite_atm = false """
     x_y_wdir = [p for p in x_y_wdir]
 
     for d in x_y_wdir:
-        i,j,k = d
+        i, j, k = d
         dir_tmp = user_output_dir + 'tmp_dir' + "_" + str(i) + "_" + str(j)
         if not os.path.isdir(dir_tmp):
             os.makedirs(dir_tmp)
@@ -457,6 +457,14 @@ write_farsite_atm = false """
                                              pixel_height, pixel_width, res_wind, targ_res, var_transform, wind_average,
                                              wn_exe,
                                              xmin, ymin), x_y_wdir), total=len(x_y_wdir)))
+
+    for d in itertools.product(range(0, nopt_x),
+                               range(0, nopt_y)):
+        i, j = d
+        name_tmp = 'tmp_' + str(i) + "_" + str(j)
+        fic_tmp = user_output_dir + name_tmp + ".tif"
+        os.remove(fic_tmp)
+
 
     print('Building VRTs...')
     # Loop on wind direction to build reference vrt file to be used by mesher
@@ -576,8 +584,6 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     reproject_to_wgs84(fic_tif + '.tmp.tif', fic_tif, gdal_prefix)
     os.remove(fic_tif + '.tmp.tif')
 
-    #do this at the end so if we raise an exception the file will still exist to aid in debugging
-    os.remove(fic_dem_in)
 
     # Reduce the extent of the final tif
     # xbeg = xmin + i * nx * pixel_width
