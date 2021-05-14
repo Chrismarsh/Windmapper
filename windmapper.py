@@ -601,7 +601,7 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
     #     os.remove(fic_tif)
 
 def reproject_to_wgs84(fin, fout, gdal_prefix):
-    exec_str = '%sgdalwarp -overwrite -r "cubicspline" -t_srs "+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45" %s %s'   #epsg:4326
+    exec_str = '%sgdalwarp -overwrite -r "cubicspline" -t_srs "+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45" -dstnodata -9999 %s %s'  
 
     com_string = exec_str % (gdal_prefix, fin, fout)
     subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
