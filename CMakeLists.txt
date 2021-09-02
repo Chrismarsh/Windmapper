@@ -18,7 +18,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}
 endif ()
 
 conan_add_remote(NAME CHM
-        URL http://api.snowcast.ca/artifactory/api/conan/chm
+        URL http://conan.snowcast.ca/artifactory/api/conan/chm
         )
 
 conan_cmake_run(CONANFILE conanfile.py
