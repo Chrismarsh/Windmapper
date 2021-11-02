@@ -89,18 +89,12 @@ def main():
         use_existing_dem = X.use_existing_dem
     if use_existing_dem:
         dem_filename = X.dem_filename
-
-        lat_min = X.lat_min
-        lat_max = X.lat_max
-        lon_min = X.lon_min
-        lon_max = X.lon_max
     else:
         lat_min = X.lat_min
         lat_max = X.lat_max
         lon_min = X.lon_min
         lon_max = X.lon_max
 
-    if not use_existing_dem:
         if lat_min == -9999 or lon_min == -9999 or lat_max == -9999 or lon_max == -9999:
             print('Coordinates of the bounding box must be specified to download SRTM DEM.')
             exit(-1)
@@ -207,13 +201,14 @@ write_farsite_atm = false """
     name_utm = 'ref-DEM-proj'
     fic_lcc = user_output_dir + '/' + name_utm + '.tif'
 
-    LCC_proj = '+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45'
+    # LCC_proj = '+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45'
     LCC_proj = None
     if use_existing_dem:
 
         # if we are using a user-provided dem, ensure there are no NoData values that border the
         # DEM which will cause issues
         print('Preparing input DEM')
+
         # mask data values
         print('...',end='')
         exec_str = """%sgdal_calc.py -A %s --outfile %s --NoDataValue 0 --calc="1*(A>0)" """ % (gdal_prefix,
@@ -236,6 +231,22 @@ write_farsite_atm = false """
         os.remove("%s/out.tif" % user_output_dir)
         print('100', end='')
         print(' - done')
+
+        # Get the bounding box so we can write out shp file later
+        # also serves to test that we have a geo referenced input
+        try:
+            info = gdal.Info(fic_lcc, format='json')
+            lon = [info['wgs84Extent']['coordinates'][0][x][0] for x in range(0,4)]
+            lat = [info['wgs84Extent']['coordinates'][0][x][1] for x in range(0,4)]
+
+            lat_min = X.lat_min = min(lat)
+            lat_max = X.lat_max = max(lat)
+            lon_min = X.lon_min = min(lon)
+            lon_max = X.lon_max = max(lon)
+
+        except:
+            print('There is no coordinate defined for this input tif.')
+            exit(-1)
 
 
 
@@ -466,8 +477,9 @@ write_farsite_atm = false """
         os.remove(fic_tmp)
 
 
-    print('Building VRTs...')
-    # Loop on wind direction to build reference vrt file to be used by mesher
+    print('Merging individual windmaps into TIFFs...')
+    # Because the above parallel windmap generation produces small chunks of the domain with partial overlap, they need to merged into a single tif
+    # that removes this overlap
     nwind = np.arange(0, 360., delta_wind)
     with tqdm(total=len(nwind)) as pbar:
         for wdir in nwind:
