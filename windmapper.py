@@ -248,8 +248,6 @@ write_farsite_atm = false """
             print('There is no coordinate defined for this input tif.')
             exit(-1)
 
-
-
     else:
 
         # need to ensure that we request a square domain in LCC projection
@@ -436,7 +434,7 @@ write_farsite_atm = false """
                                          min(utm_x), min(utm_y),  max(utm_x), max(utm_y),
                                          os.path.join(user_output_dir,'shp',f'utm_{i}_{j}.shp'),
                                          srs_out.ExportToProj4(),
-                                         fic_download,
+                                         fic_lcc,
                                          fic_tmp+'.tmp.tif')
                 subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
