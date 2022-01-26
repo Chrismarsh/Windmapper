@@ -98,7 +98,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install libgdal-dev
           sudo apt-get install gdal-bin
-#
+
           if [[ "$UBUNTU_VER" = "ubuntu-20.04" ]]; then
             sudo apt-get install python3-gdal
           else
@@ -111,8 +111,7 @@ jobs:
         run: |
           export PATH="$pythonLocation:$PATH"
           brew install gdal
-#          brew install boost
-#          brew install cgal
+
 
       - name: Use conan
         if: ${{ matrix.use-conan == 'use-conan' }}
