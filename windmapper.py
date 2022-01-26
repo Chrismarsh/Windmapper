@@ -467,6 +467,8 @@ write_farsite_atm = false """
                                              wn_exe,
                                              xmin, ymin), x_y_wdir), total=len(x_y_wdir)))
 
+
+
     for d in itertools.product(range(0, nopt_x),
                                range(0, nopt_y)):
         i, j = d
@@ -535,14 +537,14 @@ def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, no
 
         out = subprocess.check_output([exec_cmd],
                               # stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE,
+                              stderr=subprocess.STDOUT,
                               shell=True)
-    except subprocess.SubprocessError as e:
+    except subprocess.CalledProcessError as e:
         print('WindNinja failed to run. Something has gone very wrong.\n'
               'Run command was:\n'
               f'{exec_cmd}\n'
-              'Please raise an issue on the WindMapper github https://github.com/Chrismarsh/Windmapper')
-        print(e.output())
+              'Output was:\n'
+              f'{e.output.decode("utf-8")}')
         raise RuntimeError()
 
     for var in var_transform:
