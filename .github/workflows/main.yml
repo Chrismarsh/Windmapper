@@ -89,30 +89,30 @@ jobs:
           python -m pip install ninja
           python -m pip install wheel
 
-      #      - name: Install linux dependencies
-      #        if: startsWith( matrix.cfg.os, 'ubuntu' )
-      #        env:
-      #          UBUNTU_VER: ${{ matrix.cfg.os }}
-      #        run: |
-      #          export PATH="$pythonLocation:$PATH"
-      #          sudo apt-get update
-      ##          sudo apt-get install libgdal-dev
-      ##          sudo apt-get install gdal-bin
-      #
-      ##          if [[ "$UBUNTU_VER" = "ubuntu-20.04" ]]; then
-      ##            sudo apt-get install python3-gdal
-      ##          else
-      ##            sudo apt-get install python-gdal
-      ##          fi
-      #
-      #
-      #      - name: Install macos dependencies
-      #        if: startsWith( matrix.cfg.os, 'macos' )
-      #        run: |
-      #          export PATH="$pythonLocation:$PATH"
-      #          brew install gdal
-      #          brew install boost
-      #          brew install cgal
+      - name: Install linux dependencies
+        if: startsWith( matrix.cfg.os, 'ubuntu' )
+        env:
+          UBUNTU_VER: ${{ matrix.cfg.os }}
+        run: |
+          export PATH="$pythonLocation:$PATH"
+          sudo apt-get update
+          sudo apt-get install libgdal-dev
+          sudo apt-get install gdal-bin
+#
+          if [[ "$UBUNTU_VER" = "ubuntu-20.04" ]]; then
+            sudo apt-get install python3-gdal
+          else
+            sudo apt-get install python-gdal
+          fi
+
+
+      - name: Install macos dependencies
+        if: startsWith( matrix.cfg.os, 'macos' )
+        run: |
+          export PATH="$pythonLocation:$PATH"
+          brew install gdal
+#          brew install boost
+#          brew install cgal
 
       - name: Use conan
         if: ${{ matrix.use-conan == 'use-conan' }}
