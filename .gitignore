@@ -7,3 +7,6 @@ WindNinja_cli
 .python-version
 .idea/
 docs/_build/
+MANIFEST
+dist/
+*.egg-info
