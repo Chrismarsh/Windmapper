@@ -31,10 +31,6 @@ conan_cmake_run(CONANFILE conanfile.py
                 BUILD missing
 )
 
-execute_process(
-    COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/WindNinja_cli| grep name | grep -v segname | grep -v sectname |  grep -v /usr | grep -v /System | grep -v @rpath | awk '{print $2}' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/WindNinja_cli; done"
-)
-
 install( DIRECTORY ${CMAKE_BINARY_DIR}/lib/
          DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/lib/
 )
