@@ -3,6 +3,7 @@ import subprocess
 from packaging.version import LegacyVersion
 from skbuild.exceptions import SKBuildError
 from skbuild.cmaker import get_cmake_version
+import packaging
 
 def get_installed_gdal_version():
     try:
@@ -11,10 +12,9 @@ def get_installed_gdal_version():
         version = version.replace('\n', '')
         #pygdal don'ts always have the most up todate version so we will need to swtich to pygdal-chm if it is not available
         # 3.3.2 is most recent as of this version
-        mmp = [int(x) for x in version.split('.')]
-        chm = ''
-        if mmp[0] > 3 or mmp[1] > 3 or mmp[2] > 2:
-            chm = '-chm'
+        chm=''
+        if packaging.version.parse(version) > packaging.version.parse("3.3.2"):
+            chm='-chm'
 
         version = chm + "=="+version+".*"
         return version
@@ -35,7 +35,7 @@ except SKBuildError:
 
 
 setup(name='windmapper',
-      version='1.2.14',
+      version='1.2.15',
       description='Windfield library generation',
       long_description="""
       Generates windfields
