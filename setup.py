@@ -3,7 +3,7 @@ import subprocess
 from packaging.version import LegacyVersion
 from skbuild.exceptions import SKBuildError
 from skbuild.cmaker import get_cmake_version
-import packaging
+import packaging.version
 
 def get_installed_gdal_version():
     try:
@@ -35,7 +35,7 @@ except SKBuildError:
 
 
 setup(name='windmapper',
-      version='1.2.15',
+      version='1.2.16',
       description='Windfield library generation',
       long_description="""
       Generates windfields

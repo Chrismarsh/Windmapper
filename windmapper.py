@@ -25,6 +25,7 @@ from concurrent import futures
 from tqdm import tqdm
 import random
 import time
+import json
 import rasterio as rio
 
 gdal.UseExceptions()  # Enable exception support
@@ -206,14 +207,14 @@ write_farsite_atm = false """
     if use_existing_dem:
 
         # if we are using a user-provided dem, ensure there are no NoData values that border the
-        # DEM which will cause issues
+        # DEM which will cause issues and ensure it is rectangular
         print('Preparing input DEM')
 
         # mask data values
         print('...',end='')
-        exec_str = """%sgdal_calc.py -A %s --outfile %s --NoDataValue 0 --calc="1*(A>0)" """ % (gdal_prefix,
+        exec_str = """%sgdal_calc.py -A %s --outfile %s --NoDataValue 0 --calc="1*(A>-100)" """ % (gdal_prefix,
             dem_filename, user_output_dir + 'out.tif')
-        subprocess.check_call([exec_str],   shell=True) #stdout=subprocess.PIPE,  stderr=subprocess.PIPE,
+        subprocess.check_call([exec_str],   shell=True)
         print('25...', end='')
 
         # convert to shp file
@@ -222,7 +223,51 @@ write_farsite_atm = false """
         subprocess.check_call([exec_str],  shell=True)
         print('50...', end='')
 
-        # clip original with the shpfile
+        # #
+        # # driver = ogr.GetDriverByName('ESRI Shapefile')
+        # # dataSource = driver.Open('windmapper_config/pols/out.shp', 0)
+        # # layer = dataSource.GetLayer()
+        # # feat = layer.GetFeature(0)
+        # # geom = feat.GetGeomFieldRef(0)
+        # #
+        # # (minX, maxX, minY, maxY) = geom.GetEnvelope()
+        #
+        # with open('%s/pols' % user_output_dir, 'r') as file:
+        #     poly = json.load(file)
+        #
+        # coords = poly['features'][0]['geometry']['coordinates'][0]
+        # c = np.array(coords)
+        # # [0] = lon, [1] = lat
+        # bbox = [min(coords, key=lambda x: x[0]),
+        #         max(coords, key=lambda x: x[0]),
+        #         min(coords, key=lambda x: x[1]),
+        #         max(coords, key=lambda x: x[1])]
+        # bbox = np.array(bbox)
+        #
+        # # pick the middle
+        # lons = np.sort(bbox[:, 0])[1:3]
+        # lats = np.sort(bbox[:, 1])[1:3]
+        #
+        # lat_min = X.lat_min = min(lats)
+        # lat_max = X.lat_max = max(lats)
+        # lon_min = X.lon_min = min(lons)
+        # lon_max = X.lon_max = max(lons)
+        #
+        # srs_out = osr.SpatialReference()
+        # srs_out.ImportFromEPSG(4326)
+        #
+        # pts_to_shp([[lat_max, lon_min],
+        #             [lat_max, lon_max],
+        #             [lat_min, lon_max],
+        #             [lat_min, lon_min]],
+        #            os.path.join(user_output_dir, 'shp', 'test.shp'),
+        #            srs_out.ExportToProj4(),
+        #            )
+        #
+        #
+
+
+        # clip original with the shpfile to get the no data only zone
         exec_str = """%sgdalwarp -of GTiff -cutline %s/pols/out.shp -crop_to_cutline -dstalpha %s %s """ % (gdal_prefix,
             user_output_dir, dem_filename, fic_lcc)
         subprocess.check_call([exec_str], shell=True)
@@ -248,15 +293,29 @@ write_farsite_atm = false """
             print('There is no coordinate defined for this input tif.')
             exit(-1)
 
+        #ensure we have a rectangular domain
+        LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min + lat_max) / 2.0)
+
+        # convert this to our custom mercator projection
+        exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -r bilinear  '
+        com_string = exec_str % (gdal_prefix, fic_lcc, fic_lcc+'.tmp.tif', LCC_proj)
+        subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        os.remove("%s" % fic_lcc)
+        #ensure we have a float32 dataset
+        exec_str = '%sgdal_translate -ot Float32  %s %s' % (gdal_prefix, fic_lcc+'.tmp.tif', fic_lcc)
+        subprocess.check_call([exec_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        os.remove(fic_lcc+'.tmp.tif')
+
     else:
 
         # need to ensure that we request a square domain in LCC projection
+        fac = 0.1  # Expansion factor to make sure that the downloaded SRTM tile is large enough
 
         # Properties of the bounding box
         delta_lat = lat_max - lat_min
         delta_lon = lon_max - lon_min
-
-        fac = 0.1  # Expansion factor to make sure that the downloaded SRTM tile is large enough
 
         # This is a larger extent than what we will use so we ensure perfect coverage
         lon_min_expanded = lon_min - delta_lon * fac
@@ -264,24 +323,25 @@ write_farsite_atm = false """
         lon_max_expanded = lon_max + delta_lon * fac
         lat_max_expanded = lat_max + delta_lat * fac
 
-        LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min_expanded + lat_max_expanded)/2.0)
+        LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min_expanded + lat_max_expanded) / 2.0)
 
         t_4326_to_lcc = Transformer.from_crs("epsg:4326", LCC_proj)
-        lon_lcc, lat_lcc = t_4326_to_lcc.transform(
-                                                   [lat_min_expanded, lat_min_expanded, lat_max_expanded, lat_max_expanded],
-                                                   [lon_min_expanded, lon_max_expanded, lon_min_expanded, lon_max_expanded],
-                                                   )
-        lon_lcc_square = [ min(lon_lcc), min(lon_lcc), max(lon_lcc), max(lon_lcc)]
-        lat_lcc_square = [ min(lat_lcc), max(lat_lcc), min(lat_lcc), max(lat_lcc)]
 
-        t_merc_to_4326 = Transformer.from_crs(LCC_proj, "epsg:4326",)
+        lon_lcc, lat_lcc = t_4326_to_lcc.transform(
+            [lat_min_expanded, lat_min_expanded, lat_max_expanded, lat_max_expanded],
+            [lon_min_expanded, lon_max_expanded, lon_min_expanded, lon_max_expanded],
+        )
+
+        lon_lcc_square = [min(lon_lcc), min(lon_lcc), max(lon_lcc), max(lon_lcc)]
+        lat_lcc_square = [min(lat_lcc), max(lat_lcc), min(lat_lcc), max(lat_lcc)]
+
+        t_merc_to_4326 = Transformer.from_crs(LCC_proj, "epsg:4326", )
         new_4326_square_lat, new_4326_square_lon = t_merc_to_4326.transform(lon_lcc_square, lat_lcc_square)
 
         lat_max_expanded = max(new_4326_square_lat)
         lat_min_expanded = min(new_4326_square_lat)
         lon_max_expanded = max(new_4326_square_lon)
         lon_min_expanded = min(new_4326_square_lon)
-
 
         # Download reference SRTM data
         elevation.clip(bounds=(lon_min_expanded, lat_min_expanded, lon_max_expanded, lat_max_expanded), output=fic_download)
@@ -507,8 +567,6 @@ write_farsite_atm = false """
                 os.remove(name_tif+'.tmp.tif')
 
             pbar.update(1)
-
-
 
 
 def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, nopt_x, nopt_y, nx, ny,
