@@ -289,6 +289,18 @@ write_farsite_atm = false """
             lon_min = X.lon_min = min(lon)
             lon_max = X.lon_max = max(lon)
 
+            fac = 0.1  # Expansion factor to make sure that the downloaded SRTM tile is large enough
+
+            # Properties of the bounding box
+            delta_lat = lat_max - lat_min
+            delta_lon = lon_max - lon_min
+
+            # This is a small extent than what we have so we ensure perfect coverage
+            lon_min = lon_min + delta_lon * fac
+            lat_min = lat_min + delta_lat * fac
+            lon_max = lon_max - delta_lon * fac
+            lat_max = lat_max - delta_lat * fac
+
         except:
             print('There is no coordinate defined for this input tif.')
             exit(-1)
@@ -305,7 +317,6 @@ write_farsite_atm = false """
         #ensure we have a float32 dataset
         exec_str = '%sgdal_translate -ot Float32  %s %s' % (gdal_prefix, fic_lcc+'.tmp.tif', fic_lcc)
         subprocess.check_call([exec_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-
         os.remove(fic_lcc+'.tmp.tif')
 
     else:
