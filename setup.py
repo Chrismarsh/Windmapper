@@ -35,7 +35,7 @@ except SKBuildError:
 
 
 setup(name='windmapper',
-      version='1.2.17',
+      version='1.2.18',
       description='Windfield library generation',
       long_description="""
       Generates windfields
@@ -45,7 +45,7 @@ setup(name='windmapper',
       url="https://github.com/Chrismarsh/Windmapper",
       include_package_data=True,
       cmake_args=['-DCMAKE_BUILD_TYPE=Release'],
-      scripts=["windmapper.py",'rio_merge.py',"cli_massSolver.cfg"],
+      scripts=["windmapper.py", 'scripts/rio_merge.py', "cfg/cli_massSolver.cfg"],
       install_requires=['pygdal'+get_installed_gdal_version(),'numpy','scipy','elevation','pyproj','tqdm','rasterio'],
       setup_requires=setup_requires,
       python_requires='>=3.6'
