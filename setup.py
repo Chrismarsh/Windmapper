@@ -35,7 +35,7 @@ except SKBuildError:
 
 
 setup(name='windmapper',
-      version='1.2.18',
+      version='1.2.19',
       description='Windfield library generation',
       long_description="""
       Generates windfields

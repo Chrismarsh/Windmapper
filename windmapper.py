@@ -100,6 +100,11 @@ def main():
             print('Coordinates of the bounding box must be specified to download SRTM DEM.')
             exit(-1)
 
+
+    skip_mercator_proj = False
+    if hasattr(X, "skip_merc_proj"):
+        skip_mercator_proj = X.skip_mercator_proj
+
     # Method to compute average wind speed used to derive transfert function
     wind_average = 'grid'
     targ_res = 1000
@@ -305,19 +310,22 @@ write_farsite_atm = false """
             print('There is no coordinate defined for this input tif.')
             exit(-1)
 
-        #ensure we have a rectangular domain
-        LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min + lat_max) / 2.0)
+        # we may wish to skip this for specific inputs
+        # a tight square UTM domain will be slightly offset in merc causing WN issues
+        if skip_mercator_proj:
+            #ensure we have a rectangular domain
+            LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min + lat_max) / 2.0)
 
-        # convert this to our custom mercator projection
-        exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -r bilinear  '
-        com_string = exec_str % (gdal_prefix, fic_lcc, fic_lcc+'.tmp.tif', LCC_proj)
-        subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            # convert this to our custom mercator projection
+            exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -r bilinear  '
+            com_string = exec_str % (gdal_prefix, fic_lcc, fic_lcc+'.tmp.tif', LCC_proj)
+            subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
-        os.remove("%s" % fic_lcc)
-        #ensure we have a float32 dataset
-        exec_str = '%sgdal_translate -ot Float32  %s %s' % (gdal_prefix, fic_lcc+'.tmp.tif', fic_lcc)
-        subprocess.check_call([exec_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        os.remove(fic_lcc+'.tmp.tif')
+            os.remove("%s" % fic_lcc)
+            #ensure we have a float32 dataset
+            exec_str = '%sgdal_translate -ot Float32  %s %s' % (gdal_prefix, fic_lcc+'.tmp.tif', fic_lcc)
+            subprocess.check_call([exec_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            os.remove(fic_lcc+'.tmp.tif')
 
     else:
 
