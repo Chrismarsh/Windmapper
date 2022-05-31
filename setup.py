@@ -13,7 +13,7 @@ def get_installed_gdal_version():
         #pygdal don'ts always have the most up todate version so we will need to swtich to pygdal-chm if it is not available
         # 3.3.2 is most recent as of this version
         chm=''
-        if packaging.version.parse(version) > packaging.version.parse("3.3.2"):
+        if packaging.version.parse(version) > packaging.version.parse("3.4.1"):
             chm='-chm'
 
         version = chm + "=="+version+".*"
@@ -35,7 +35,7 @@ except SKBuildError:
 
 
 setup(name='windmapper',
-      version='1.2.19',
+      version='1.2.20',
       description='Windfield library generation',
       long_description="""
       Generates windfields

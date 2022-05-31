@@ -102,7 +102,7 @@ def main():
 
 
     skip_mercator_proj = False
-    if hasattr(X, "skip_merc_proj"):
+    if hasattr(X, "skip_mercator_proj"):
         skip_mercator_proj = X.skip_mercator_proj
 
     # Method to compute average wind speed used to derive transfert function
@@ -312,7 +312,7 @@ write_farsite_atm = false """
 
         # we may wish to skip this for specific inputs
         # a tight square UTM domain will be slightly offset in merc causing WN issues
-        if skip_mercator_proj:
+        if not skip_mercator_proj:
             #ensure we have a rectangular domain
             LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min + lat_max) / 2.0)
 
