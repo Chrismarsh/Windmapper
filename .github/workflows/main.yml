@@ -167,7 +167,7 @@ jobs:
           VERSION=$(grep 'version=' setup.py | cut -d\' -f2)
           python -m pip install dist/windmapper-$VERSION.tar.gz
           cd examples/download_DEM
-          windmapper.py param_download_DEM.py
+#          windmapper.py param_download_DEM.py
 
       - name: Deploy
         run: |
