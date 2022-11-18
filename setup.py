@@ -1,8 +1,9 @@
-from skbuild import setup
+# import setuptools
+# from skbuild import setup
 import subprocess
 from packaging.version import LegacyVersion
-from skbuild.exceptions import SKBuildError
-from skbuild.cmaker import get_cmake_version
+# from skbuild.exceptions import SKBuildError
+# from skbuild.cmaker import get_cmake_version
 import packaging.version
 
 def get_installed_gdal_version():
@@ -27,15 +28,15 @@ def get_installed_gdal_version():
 # Add CMake as a build requirement if cmake is not installed or is too low a version
 # https://scikit-build.readthedocs.io/en/latest/usage.html#adding-cmake-as-building-requirement-only-if-not-installed-or-too-low-a-version
 setup_requires = []
-try:
-    if LegacyVersion(get_cmake_version()) < LegacyVersion("3.16"):
-        setup_requires.append('cmake')
-except SKBuildError:
-    setup_requires.append('cmake')
+# try:
+#     if LegacyVersion(get_cmake_version()) < LegacyVersion("3.16"):
+#         setup_requires.append('cmake')
+# except SKBuildError:
+#     setup_requires.append('cmake')
 
 
 setup(name='windmapper',
-      version='1.2.21',
+      version='1.2.22',
       description='Windfield library generation',
       long_description="""
       Generates windfields
@@ -44,7 +45,7 @@ setup(name='windmapper',
       author_email='chris.marsh@usask.ca',
       url="https://github.com/Chrismarsh/Windmapper",
       include_package_data=True,
-      cmake_args=['-DCMAKE_BUILD_TYPE=Release'],
+      # cmake_args=['-DCMAKE_BUILD_TYPE=Release'],
       scripts=["windmapper.py", 'scripts/rio_merge.py', "cfg/cli_massSolver.cfg"],
       install_requires=['pygdal'+get_installed_gdal_version(),'numpy','scipy','elevation','pyproj','tqdm','rasterio'],
       setup_requires=setup_requires,
