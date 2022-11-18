@@ -45,18 +45,14 @@ jobs:
         # test-conda: ["sys-python"]
         # use-conan: ['use-conan']
 
-        python-version: [ 3.7, 3.8 ]
+        python-version: [ 3.8 ]
         test-conda: [ "sys-python" ] #"conda-python",
         use-conan: [ 'use-conan' ]  #'use-sys-lib',
 
         cfg:
-          - { os: "ubuntu-18.04", compiler: "gcc", version: 7 }
-          - { os: "ubuntu-18.04", compiler: "gcc", version: 9 }
-          - { os: "ubuntu-18.04", compiler: "gcc", version: 10 }
-          - { os: "ubuntu-20.04", compiler: "gcc", version: 9 }
-          - { os: "ubuntu-20.04", compiler: "gcc", version: 10 }
-          - { os: "macos-10.15",  compiler: "apple-clang", version: "12.0" }
-          - { os: "macos-11",     compiler: "apple-clang", version: "13.0" }
+          - {os: "ubuntu-20.04", compiler: "gcc", version: 9}
+          - {os: "ubuntu-20.04", compiler: "gcc", version: 10}
+          - {os: "macos-12", compiler: "apple-clang", version: "13.1"}
 
 
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -127,6 +123,7 @@ jobs:
           CONAN_GCC_VERSIONS: ${{ matrix.cfg.version }}
           CC: gcc-${{ matrix.cfg.version }}
           CXX: g++-${{ matrix.cfg.version }}
+          FC: gfortran-${{ matrix.cfg.version }}
           GFORTRAN_NAME: gfortran-${{ matrix.cfg.version }}
 
       - name: env macos
@@ -134,7 +131,8 @@ jobs:
         uses: allenevans/set-env@v2.0.0
         with:
           CONAN_APPLE_CLANG_VERSIONS: ${{ matrix.cfg.version }}
-          GFORTRAN_NAME: gfortran-10 # set the name to use for gfortran as we need to use gfotran-<version>
+          FC: gfortran-11
+          GFORTRAN_NAME: gfortran-11 # set the name to use for gfortran as we need to use gfotran-<version>
 
       - name: Set envar
         uses: allenevans/set-env@v2.0.0
