@@ -1,4 +1,4 @@
-# import setuptools
+from setuptools import setup
 # from skbuild import setup
 import subprocess
 from packaging.version import LegacyVersion
@@ -36,7 +36,7 @@ setup_requires = []
 
 
 setup(name='windmapper',
-      version='1.2.22',
+      version='1.2.23',
       description='Windfield library generation',
       long_description="""
       Generates windfields
