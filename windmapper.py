@@ -217,13 +217,13 @@ write_farsite_atm = false """
 
         # mask data values
         print('...',end='')
-        exec_str = """%sgdal_calc.py -A %s --outfile %s --NoDataValue 0 --calc="1*(A>-100)" """ % (gdal_prefix,
+        exec_str = """gdal_calc.py -A %s --outfile %s --NoDataValue 0 --calc="1*(A>-100)" """ % (
             dem_filename, user_output_dir + 'out.tif')
         subprocess.check_call([exec_str],   shell=True)
         print('25...', end='')
 
         # convert to shp file
-        exec_str = """%sgdal_polygonize.py -8 -b 1 -f "ESRI Shapefile" %s %s/pols """ % (gdal_prefix,
+        exec_str = """gdal_polygonize.py -8 -b 1 -f "ESRI Shapefile" %s %s/pols """ % (
             user_output_dir + 'out.tif', user_output_dir)
         subprocess.check_call([exec_str],  shell=True)
         print('50...', end='')
