@@ -71,7 +71,7 @@ else:
     from setuptools import setup
 
 args =   {'name': 'windmapper',
-          'version': '1.2.25',
+          'version': '1.3.0',
           'description': 'Windfield library generation',
           'long_description': "Generates windfields",
           'author': 'Chris Marsh',
