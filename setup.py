@@ -2,7 +2,28 @@ import os
 import subprocess
 import packaging.version
 from packaging.version import LegacyVersion
-from distutils.util import strtobool
+
+# replace disutils as it is deprecated
+#https://github.com/drgarcia1986/simple-settings/pull/281/commits/41a0584d693a17400a1922821533260750be40fa
+_MAP = {
+    'y': True,
+    'yes': True,
+    't': True,
+    'true': True,
+    'on': True,
+    '1': True,
+    'n': False,
+    'no': False,
+    'f': False,
+    'false': False,
+    'off': False,
+    '0': False
+}
+def strtobool(value):
+    try:
+        return _MAP[str(value).lower()]
+    except KeyError:
+        raise ValueError('"{}" is not a valid bool value'.format(value))
 
 build_wn = False
 try:
@@ -50,7 +71,7 @@ else:
     from setuptools import setup
 
 args =   {'name': 'windmapper',
-          'version': '1.2.24',
+          'version': '1.2.25',
           'description': 'Windfield library generation',
           'long_description': "Generates windfields",
           'author': 'Chris Marsh',
