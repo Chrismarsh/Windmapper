@@ -20,7 +20,7 @@ model.
    :hidden:
 
    install
-   build
+   windninja
    use
    configuration
 

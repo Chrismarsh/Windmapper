@@ -46,6 +46,14 @@ User-supplied DEM
     # name of the DEM file if use_existing_dem = True
     dem_filename = '../data/srtm_snowcast.tif'
 
+.. confval:: wn_exe
+
+    :default: string
+
+    Path to the WindNinja CLI executable `WindNinja_cli`. If WindMapper was installed with ``BUILD_WINDNINJA=TRUE``
+    this is not needed.
+
+
 Downloaded DEM
 ~~~~~~~~~~~~~~~
 
@@ -83,12 +91,6 @@ Optional
     :default: 150 m
 
     Spatial  resolution of the WindNinja simulations
-
-.. confval:: wn_exe
-
-    :default: string
-
-    Path to the WindNinja CLI executable `WindNinja_cli`. If Windmapper was installed via pip, then this does not need to be set.
 
 .. confval:: ncat
 
