@@ -7,7 +7,7 @@ from distutils.util import strtobool
 build_wn = False
 try:
     build_wn = strtobool(os.environ['BUILD_WINDNINJA'])
-except ValueError:
+except:
     build_wn = False
 
 print(f'Build WindNinja? {build_wn}')
