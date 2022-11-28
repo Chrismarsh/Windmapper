@@ -6,7 +6,7 @@ Install
 
 WindMapper requires WindNinja to be installed to work and installing WindMapper does not installed WindNinja.
 This can automatically be done with setting ``BUILD_WINDNINJA=TRUE`` before installing with pip. Otherwise, please see
-`Build`_ for details on building WindNinja.
+`windninja`_ for details on building WindNinja.
 
 
 Install gdal
