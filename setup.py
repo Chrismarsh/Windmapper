@@ -1,7 +1,6 @@
 import os
 import subprocess
 import packaging.version
-from packaging.version import LegacyVersion
 
 # replace disutils as it is deprecated
 #https://github.com/drgarcia1986/simple-settings/pull/281/commits/41a0584d693a17400a1922821533260750be40fa
@@ -62,7 +61,7 @@ if build_wn:
     try:
         # Add CMake as a build requirement if cmake is not installed or is too low a version
         # https://scikit-build.readthedocs.io/en/latest/usage.html#adding-cmake-as-building-requirement-only-if-not-installed-or-too-low-a-version
-        if LegacyVersion(get_cmake_version()) < LegacyVersion("3.16"):
+        if packaging.version.parse(get_cmake_version()) < packaging.version.parse("3.16"):
             setup_requires.append('cmake')
     except SKBuildError:
         setup_requires.append('cmake')
