@@ -1,12 +1,20 @@
 #!/usr/bin/env python
 
 # Wind Mapper
-# Copyright (C) 2020 Vincent Vionnet & Christopher Marsh
-# Script to build wind maps for CHM based on the Wind Ninja diagnostic wind model
-# Take an existing DEM or download it from SRTM-30m the Web
-# Split the DEM into several subdomain suitable for WindNinja
-# Execute the WN simulations
-# Combine the outputs into a single vrt file covering the initial DEM extent
+# Copyright (C) 2017 Christopher Marsh and Vincent Vionnet
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 import elevation
@@ -17,18 +25,16 @@ from pyproj import Proj, transform, Transformer
 import numpy as np
 import sys
 import importlib
-from functools import partial
 import itertools
-from scipy import ndimage
-from os import environ
-from concurrent import futures
 from tqdm import tqdm
-import random
-import time
-import json
-import rasterio as rio
+import cloudpickle
+from mpi4py import MPI
+import windmapper_utls as wm
+
 
 gdal.UseExceptions()  # Enable exception support
+ogr.UseExceptions()  # Enable exception support
+osr.UseExceptions()  # Enable exception support
 
 
 def main():
@@ -37,7 +43,7 @@ def main():
 
     if len(sys.argv) == 1:
         print(
-            'ERROR: wind_mapper.py requires one argument [configuration file] (i.e. wind_mapper.py '
+            'ERROR: windmapper.py requires one argument [configuration file] (i.e. windmapper.py '
             'param_existing_DEM.py)')
         exit(-1)
 
@@ -66,7 +72,26 @@ def main():
         print(f'Path = {wn_exe}')
         exit(-1)
 
-    environ["WINDNINJA_DATA"] = os.path.join(os.path.dirname(wn_exe), '..', 'share', 'windninja')
+    MPI_exec_str = None
+    if hasattr(X, 'MPI_exec_str'):
+        MPI_exec_str = X.MPI_exec_str
+
+    # on macos M1, the 2 efficiency cores don't seem to be targetable by OpenMPI?
+    # Setup file containing WN configuration
+    nworkers = os.cpu_count() or 1
+
+    # on linux we can ensure that we respect cpu affinity
+    if 'sched_getaffinity' in dir(os):
+        nworkers = len(os.sched_getaffinity(0))
+
+    MPI_nworkers = nworkers
+    if hasattr(X, 'MPI_nworkers'):
+        MPI_nworkers = X.MPI_nworkers
+    elif not hasattr(X, 'MPI_nworkers') and MPI_exec_str:
+        raise RuntimeError('If MPI_exec_str is provided, then MPI_nworkers must also be provided')
+
+    # This is used later in the MPI subprocess call
+    WINDNINJA_DATA = os.path.join(os.path.dirname(wn_exe), '..', 'share', 'windninja')
 
     # Parameter for atmospheric stability in Wind Ninja mass conserving (default value)
     alpha = 1
@@ -138,12 +163,7 @@ def main():
     # make new output dir
     os.makedirs(user_output_dir)
 
-    # Setup file containing WN configuration
-    nworkers = os.cpu_count() or 1
 
-    # on linux we can ensure that we respect cpu affinity
-    if 'sched_getaffinity' in dir(os):
-        nworkers = len(os.sched_getaffinity(0))
 
     # ensure correct formatting on the output
     fic_config = F"""num_threads = {nworkers}  
@@ -538,14 +558,33 @@ write_farsite_atm = false """
         if not os.path.isdir(dir_tmp):
             os.makedirs(dir_tmp)
 
-    print(f'Running WindNinja on {len(x_y_wdir)} combinations of direction and sub-area. Please be patient...')
-    with futures.ProcessPoolExecutor(max_workers=nworkers) as executor:
-        res = list(tqdm(executor.map(partial(call_WN_1dir, gdal_prefix, user_output_dir, fic_config_WN,
-                                             list_tif_2_vrt, nopt_x, nopt_y, nx, ny,
-                                             pixel_height, pixel_width, res_wind, targ_res, var_transform, wind_average,
-                                             wn_exe,
-                                             xmin, ymin), x_y_wdir), total=len(x_y_wdir)))
+    x_y_wdir_split = np.array_split(x_y_wdir, MPI_nworkers)
 
+    print(f'Running WindNinja on {len(x_y_wdir)} combinations of direction and sub-area. Please be patient...')
+
+    for rank in range(MPI_nworkers):
+        rank_args = [WINDNINJA_DATA, MPI_nworkers, gdal_prefix, user_output_dir, fic_config_WN,
+            list_tif_2_vrt, nopt_x, nopt_y, nx, ny,
+            pixel_height, pixel_width, res_wind, targ_res, var_transform, wind_average,
+            wn_exe, xmin, ymin, x_y_wdir_split[rank]]
+
+        with open(f'pickled_param_args_{rank}.pickle', 'wb') as f:
+            cloudpickle.dump(rank_args, f)
+
+    MPI_exec_str = None
+    MPI_runWM_path = os.path.join(os.path.join(os.path.dirname(wm.__file__),
+                                                        'MPI_call_WN_1dir.py'))
+
+    if MPI_exec_str is not None:
+        exec_str = f"""{MPI_exec_str} {MPI_runWM_path} pickled_param_args_RANK.pickle False"""
+        print(exec_str)
+        subprocess.check_call([exec_str], shell=True, cwd=os.getcwd())
+    else:
+        comm = MPI.COMM_SELF.Spawn(sys.executable,
+                                   args=[MPI_runWM_path,
+                                         'pickled_param_args_RANK.pickle', 'True'],
+                                   maxprocs=MPI_nworkers)
+        comm.Disconnect()
 
 
     for d in itertools.product(range(0, nopt_x),
@@ -563,9 +602,6 @@ write_farsite_atm = false """
     with tqdm(total=len(nwind)) as pbar:
         for wdir in nwind:
             for var in list_tif_2_vrt:
-                # name_vrt = user_output_dir + name_utm + '_' + str(int(wdir)) + '_' + var + '.vrt'
-                # cmd = "find " + user_output_dir[0:-1] + " -type f -name '*_" + str(int(wdir)) + "_10_" + str(
-                #     res_wind) + "m_" + var + "*.tif' -exec " + gdal_prefix + "gdalbuildvrt " + name_vrt + " {} +"
 
                 name_tif = user_output_dir + name_utm + '_' + str(int(wdir)) + '_' + var
                 cmd = "find " + user_output_dir[0:-1] + " -type f -name '*_" + str(int(wdir)) + "_10_" + str(
@@ -587,113 +623,7 @@ write_farsite_atm = false """
 
             pbar.update(1)
 
-
-def call_WN_1dir(gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, nopt_x, nopt_y, nx, ny,
-                 pixel_height, pixel_width, res_wind, targ_res, var_transform, wind_average, wn_exe, xmin, ymin,
-                 ijwdir):
-
-    # when launching back to back windninja processes, there is a race condition in the WN check to determine
-    # if a directory is writeable
-    # https://github.com/firelab/windninja/issues/382
-    # so add a little jitter to the process invocation to 'fix' this.
-    time.sleep(random.random()*5)
-
-    i, j, wdir = ijwdir
-
-    # Out directory
-    dir_tmp = user_output_dir + 'tmp_dir' + "_" + str(i) + "_" + str(j)
-    name_tmp = 'tmp_' + str(i) + "_" + str(j)
-    fic_dem_in = user_output_dir + name_tmp + ".tif"
-
-    name_base = dir_tmp + '/' + name_tmp + '_' + str(int(wdir)) + '_10_' + str(res_wind) + 'm_'
-
-    exec_cmd = wn_exe + ' ' + \
-               fic_config_WN + ' --elevation_file ' + fic_dem_in + ' --mesh_resolution ' + str(
-        res_wind) + ' --input_direction ' + str(int(wdir)) + ' --output_path ' + dir_tmp
-    try:
-
-        out = subprocess.check_output([exec_cmd],
-                              # stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT,
-                              shell=True)
-    except subprocess.CalledProcessError as e:
-        print('WindNinja failed to run. Something has gone very wrong.\n'
-              'Run command was:\n'
-              f'{exec_cmd}\n'
-              'Output was:\n'
-              f'{e.output.decode("utf-8")}')
-        raise RuntimeError()
-
-    for var in var_transform:
-        name_gen = name_base + var
-        try:
-            subprocess.check_call([gdal_prefix + 'gdal_translate ' + name_gen + '.asc ' + name_gen + '.tif'],
-                                  stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                  shell=True)
-        except subprocess.SubprocessError as e:
-            print('The file gdal was expecting to transform was not present. This is almost certainly due to this issue https://github.com/firelab/windninja/issues/382 '
-                  'Please raise an issue on the WindMapper github https://github.com/Chrismarsh/Windmapper')
-            raise RuntimeError()
-
-        os.remove(name_gen + '.asc')
-        os.remove(name_gen + '.prj')
-
-    # Read geotif for angle and velocity to compute speed up
-    gtif = gdal.Open(name_base + 'ang.tif')
-    ang = gtif.GetRasterBand(1).ReadAsArray()
-    vel_tif = gdal.Open(name_base + 'vel.tif')
-    vel = vel_tif.GetRasterBand(1).ReadAsArray()
-
-    # Compute and save wind components
-    uu = -1 * np.sin(ang * np.pi / 180.)
-    fic_tif = name_base + 'U_large.tif'
-    save_tif(uu, vel_tif, fic_tif+'.tmp.tif')
-    reproject_to_wgs84(fic_tif+'.tmp.tif', fic_tif, gdal_prefix)
-    os.remove(fic_tif+'.tmp.tif')
-
-    vv = -1 * np.cos(ang * np.pi / 180.)
-    fic_tif = name_base + 'V_large.tif'
-    save_tif(vv, vel_tif, fic_tif+'.tmp.tif')
-    reproject_to_wgs84(fic_tif + '.tmp.tif', fic_tif, gdal_prefix)
-    os.remove(fic_tif + '.tmp.tif')
-
-    # Compute smooth wind speed
-    if wind_average == 'grid':
-        nsize = targ_res / res_wind
-        vv_large = ndimage.uniform_filter(vel, size=nsize, mode='nearest')
-        fic_tif = name_base + 'spd_up_' + str(targ_res) + '_large.tif'
-    elif wind_average == 'mean_tile':
-        vv_large = np.mean(vel)
-        fic_tif = name_base + 'spd_up_tile_large.tif'
-
-    # Compute local speed up and save
-    loc_speed_up = vel / vv_large
-    save_tif(loc_speed_up, vel_tif, fic_tif + '.tmp.tif')
-    reproject_to_wgs84(fic_tif + '.tmp.tif', fic_tif, gdal_prefix)
-    os.remove(fic_tif + '.tmp.tif')
-
-
-    # Reduce the extent of the final tif
-    # xbeg = xmin + i * nx * pixel_width
-    # ybeg = ymin + j * ny * pixel_height
-    # delx = nx * pixel_width
-    # dely = ny * pixel_height
-    #
-    # for var in list_tif_2_vrt:
-    #     fic_tif = name_base + var + '_large.tif'
-    #     fic_tif_fin = name_base + var + '.tif'
-    #     if nopt_x == 1 and nopt_y == 1:
-    #         shutil.copy(fic_tif, fic_tif_fin)
-    #     else:
-    #         clip_tif(fic_tif, fic_tif_fin, xbeg, xbeg + delx, ybeg, ybeg + dely, gdal_prefix)
-    #     os.remove(fic_tif)
-
-def reproject_to_wgs84(fin, fout, gdal_prefix):
-    exec_str = '%sgdalwarp -overwrite -r "cubicspline" -t_srs "+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45" -dstnodata -9999 %s %s'  
-
-    com_string = exec_str % (gdal_prefix, fin, fout)
-    subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    print('Finished')
 
 
 def clip_tif(fic_in, fic_out, xmin, xmax, ymin, ymax, gdal_prefix):
@@ -740,24 +670,7 @@ def pts_to_shp(points, fname, proj):
 
 
 
-def save_tif(var, inDs, fic):
-    # Create the geotif
-    driver = inDs.GetDriver()
-    rows = inDs.RasterYSize
-    cols = inDs.RasterXSize
-    outDs = driver.Create(fic, cols, rows, 1, gdal.GDT_Float32)
-    # Create new band
-    outBand = outDs.GetRasterBand(1)
-    outBand.WriteArray(var, 0, 0)
 
-    # Flush data to disk
-    outBand.FlushCache()
-
-    # Georeference the image and set the projection
-    outDs.SetGeoTransform(inDs.GetGeoTransform())
-    outDs.SetProjection(inDs.GetProjection())
-
-    outDs = None
 
 
 if __name__ == "__main__":

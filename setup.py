@@ -1,5 +1,6 @@
 import os
 import subprocess
+from setuptools import find_packages
 import packaging.version
 
 # replace disutils as it is deprecated
@@ -70,19 +71,23 @@ else:
     from setuptools import setup
 
 args =   {'name': 'windmapper',
-          'version': '1.3.1',
-          'description': 'Windfield library generation',
-          'long_description': "Generates windfields",
-          'author': 'Chris Marsh',
-          'author_email': 'chris.marsh@usask.ca',
-          'url': "https://github.com/Chrismarsh/Windmapper",
-          'include_package_data': True,
-          'cmake_args': ['-DCMAKE_BUILD_TYPE=Release'],
-          'scripts': ["windmapper.py", 'scripts/rio_merge.py', "cfg/cli_massSolver.cfg"],
-          'install_requires': ['pygdal' + get_installed_gdal_version(),
-                               'numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio'],
-          'setup_requires': setup_requires,
-          'python_requires': '>=3.6'}
+            'version': '2.0.0',
+            'description': 'Windfield library generation',
+            'long_description': "Generates windfields",
+            'author': 'Chris Marsh',
+            'author_email': 'chris.marsh@usask.ca',
+            'url': "https://github.com/Chrismarsh/Windmapper",
+            'include_package_data': True,
+            'packages': find_packages(where="pysrc"),
+            'package_dir': {
+            '': 'pysrc',
+            },
+            'cmake_args': ['-DCMAKE_BUILD_TYPE=Release'],
+            'scripts': ["windmapper.py", 'scripts/rio_merge.py', "cfg/cli_massSolver.cfg"],
+            'install_requires': ['pygdal' + get_installed_gdal_version(),
+                                 'numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio', 'mpi4py'],
+            'setup_requires': setup_requires,
+            'python_requires': '>=3.6'}
 
 if build_wn:
     args['cmake_args'] = ['-DCMAKE_BUILD_TYPE=Release']
