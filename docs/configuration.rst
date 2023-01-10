@@ -156,3 +156,37 @@ Optional
     :default: ./configuration-script-name
 
     Output directory.
+
+
+MPI
+~~~~~
+
+By default Windmapper will use MPI to launch the WindNinja tasks.
+
+.. confval:: MPI_nworkers
+
+    :type: int
+    :default: Number of cores on machine (e.g., 4, 8, 10, etc)
+
+    Set this to limit the number of processors used.
+
+If Windmapper is used on a cluster to process a large domain, the use of a job scheduler, such as SLURM, may be optimal.
+
+.. confval:: MPI_exec_str
+
+    :type: string
+    :default: None
+
+    Set this to a command to use to invoked the MPI job. For example
+    `MPI_exec_str='./submit_job.sh job.sh'`
+    where `submit_job.sh` invokes the queue submission, e.g.,
+    `sbatch "$@"`
+    and `job.sh` contains
+    `srun --label --unbuffered  python "$@"`
+
+    The exec string used is `f"""{MPI_exec_str} {MPI_runWM_path} pickled_param_args_RANK.pickle False"""` where MPI_runWM_path
+    holds the path to the helper script that is run with python.
+
+    If `MPI_exec_str` is provided `MPI_nworkers` must also be provided.
+
+
