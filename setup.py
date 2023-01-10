@@ -71,7 +71,7 @@ else:
     from setuptools import setup
 
 args =   {'name': 'windmapper',
-            'version': '2.0.0',
+            'version': '2.0.1',
             'description': 'Windfield library generation',
             'long_description': "Generates windfields",
             'author': 'Chris Marsh',
@@ -82,7 +82,6 @@ args =   {'name': 'windmapper',
             'package_dir': {
             '': 'pysrc',
             },
-            'cmake_args': ['-DCMAKE_BUILD_TYPE=Release'],
             'scripts': ["windmapper.py", 'scripts/rio_merge.py', "cfg/cli_massSolver.cfg"],
             'install_requires': ['pygdal' + get_installed_gdal_version(),
                                  'numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio', 'mpi4py'],

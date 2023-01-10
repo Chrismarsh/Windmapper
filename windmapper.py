@@ -571,7 +571,6 @@ write_farsite_atm = false """
         with open(f'pickled_param_args_{rank}.pickle', 'wb') as f:
             cloudpickle.dump(rank_args, f)
 
-    MPI_exec_str = None
     MPI_runWM_path = os.path.join(os.path.join(os.path.dirname(wm.__file__),
                                                         'MPI_call_WN_1dir.py'))
 
