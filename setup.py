@@ -38,13 +38,7 @@ def get_installed_gdal_version():
         version = subprocess.run(["gdal-config", "--version"], stdout=subprocess.PIPE).stdout.decode()
 
         version = version.replace('\n', '')
-        #pygdal don'ts always have the most up todate version so we will need to swtich to pygdal-chm if it is not available
-        # 3.3.2 is most recent as of this version
-        chm=''
-        if packaging.version.parse(version) > packaging.version.parse("3.5.1"):
-            chm='-chm'
-
-        version = chm + "=="+version+".*"
+        version = "=="+version+".*"
         return version
     except FileNotFoundError as e:
         raise(""" ERROR: Could not find the system install of GDAL. 
@@ -71,7 +65,7 @@ else:
     from setuptools import setup
 
 args =   {'name': 'windmapper',
-            'version': '2.0.1',
+            'version': '2.0.2',
             'description': 'Windfield library generation',
             'long_description': "Generates windfields",
             'author': 'Chris Marsh',
@@ -83,7 +77,7 @@ args =   {'name': 'windmapper',
             '': 'pysrc',
             },
             'scripts': ["windmapper.py", 'scripts/rio_merge.py', "cfg/cli_massSolver.cfg"],
-            'install_requires': ['pygdal' + get_installed_gdal_version(),
+            'install_requires': ['gdal[numpy]' + get_installed_gdal_version()+',>=3.5.0', # >= 3.5 required for this type of gdal python binding install
                                  'numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio', 'mpi4py'],
             'setup_requires': setup_requires,
             'python_requires': '>=3.6'}
