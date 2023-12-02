@@ -99,8 +99,6 @@ jobs:
 
           if [[ "$UBUNTU_VER" = "ubuntu-20.04" ]]; then
             sudo apt-get install python3-gdal
-#          else
-#            sudo apt-get install python-gdal
           fi
 
       - name: Install macos dependencies
