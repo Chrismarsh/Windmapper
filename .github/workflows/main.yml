@@ -94,6 +94,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install libgdal-dev
           sudo apt-get install gdal-bin
+          sudo aot-get install boost
 
           if [[ "$UBUNTU_VER" = "ubuntu-20.04" ]]; then
             sudo apt-get install python3-gdal
@@ -101,12 +102,12 @@ jobs:
             sudo apt-get install python-gdal
           fi
 
-
       - name: Install macos dependencies
         if: startsWith( matrix.cfg.os, 'macos' )
         run: |
           export PATH="$pythonLocation:$PATH"
           brew install gdal
+          brew install boost
 
       - name: env linux
         if: startsWith( matrix.cfg.os, 'ubuntu' )
