@@ -9,9 +9,10 @@ This can automatically be done with setting ``BUILD_WINDNINJA=TRUE`` before inst
 `windninja`_ for details on building WindNinja.
 
 
-Install gdal
+Dependencies
 ---------------
-Ensure gdal libraries are installed.
+GDAL >= 3.5 with netcdf, curl
+Boost >= 1.41.0 with date_time, program_options, test
 
 Linux
 ******
@@ -30,7 +31,7 @@ On MacOS, the gdal binaries should be installed from homebrew
 
 ::
 
-   brew install gdal
+   brew install gdal boost
 
 
 Setup Python environment
@@ -51,14 +52,14 @@ The following python requirements will be installed by ``pip``:
 
 Install Windmapper
 --------------------
-Activate the venv (if used), and then install windmapper.
+Activate the venv (if used), and then build and install windmapper.
 
 ::
 
     pip install windmapper
 
-or to automatically build WindMapper,
+To not automatically build WindMapper,
 
 ::
 
-    BUILD_WINDNINJA=TRUE pip install windmapper
+    BUILD_WINDNINJA=FALSE pip install windmapper
