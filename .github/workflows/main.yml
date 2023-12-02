@@ -134,6 +134,7 @@ jobs:
         run: |
           export PATH="$pythonLocation:$PATH"
           python setup.py sdist
+          echo "done sdist"
           VERSION=$(grep 'version=' setup.py | cut -d\' -f2)
           python -m pip install dist/windmapper-$VERSION.tar.gz
           cd examples/download_DEM
