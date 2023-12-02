@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(windmapper)
-
-if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
-
-    message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
-    file(DOWNLOAD "https://github.com/conan-io/cmake-conan/raw/v0.15/conan.cmake"
-            "${CMAKE_BINARY_DIR}/conan.cmake")
-endif()
-include(${CMAKE_BINARY_DIR}/conan.cmake)
+find_package(PythonExtensions REQUIRED)
+file(
+  DOWNLOAD
+  https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.38.3/CPM.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake
+  EXPECTED_HASH SHA256=cc155ce02e7945e7b8967ddfaff0b050e958a723ef7aad3766d368940cb15494
+)
+include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     set(CONAN_LIB_STD "libstdc++11")
@@ -17,26 +17,32 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}
     message(STATUS "Detected clang compiler, setting compiler.libcxx=${CONAN_LIB_STD}")
 endif ()
 
-conan_add_remote(NAME CHM
-        URL http://conan.snowcast.ca/artifactory/api/conan/chm
-        )
 
-conan_cmake_run(CONANFILE conanfile.py
-                BASIC_SETUP
-                KEEP_RPATHS
-                SETTINGS compiler.cppstd=14
-                SETTINGS compiler.libcxx=${CONAN_LIB_STD}
-                INSTALL_FOLDER ${CMAKE_BINARY_DIR}
-                NO_OUTPUT_DIRS
-                BUILD missing
+
+CPMAddPackage(
+  NAME WindNinja
+  GITHUB_REPOSITORY Chrismarsh/windninja
+  GIT_TAG 3.9.3
+  OPTIONS
+    "NINJA_QTGUI FALSE"
+    "NINJAFOAM FALSE"
+    "OPENMP_SUPPORT FALSE"
+    "CMAKE_CXX_STANDARD 11"
 )
 
-install( DIRECTORY ${CMAKE_BINARY_DIR}/lib/
-         DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/lib/
-)
-install( DIRECTORY ${CMAKE_BINARY_DIR}/share/
-         DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/share/
-)
-install( PROGRAMS ${CMAKE_BINARY_DIR}/bin/WindNinja_cli
-         DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/bin/
-)
+file(COPY ${CMAKE_INSTALL_PREFIX}/lib/ DESTINATION ${PYTHON_PREFIX}/bin/lib/)
+file(COPY ${CMAKE_INSTALL_PREFIX}/share/ DESTINATION ${PYTHON_PREFIX}/bin/share/)
+file(COPY ${CMAKE_INSTALL_PREFIX}/bin/WindNinja_cli DESTINATION ${PYTHON_PREFIX}/bin/bin/)
+
+
+# This approach won't work for installing outside of cmake install root
+# install( DIRECTORY ${CMAKE_INSTALL_PREFIX}/lib/
+#          DESTINATION ${PYTHON_PREFIX}/bin/lib/
+# )
+# install( DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/
+#          DESTINATION ${PYTHON_PREFIX}/bin/share/
+# )
+# install( PROGRAMS ${CMAKE_INSTALL_PREFIX}/bin/WindNinja_cli
+#          DESTINATION ${PYTHON_PREFIX}/bin/bin/
+# )
+#

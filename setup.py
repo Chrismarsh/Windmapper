@@ -25,11 +25,11 @@ def strtobool(value):
     except KeyError:
         raise ValueError('"{}" is not a valid bool value'.format(value))
 
-build_wn = False
+build_wn = True
 try:
     build_wn = strtobool(os.environ['BUILD_WINDNINJA'])
 except:
-    build_wn = False
+    build_wn = True
 
 print(f'Build WindNinja? {build_wn}')
 
@@ -65,7 +65,7 @@ else:
     from setuptools import setup
 
 args =   {'name': 'windmapper',
-            'version': '2.0.2',
+            'version': '2.1.0',
             'description': 'Windfield library generation',
             'long_description': "Generates windfields",
             'author': 'Chris Marsh',
