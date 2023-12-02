@@ -83,6 +83,7 @@ jobs:
           python -m pip install scikit-build>=0.10.0
           python -m pip install ninja
           python -m pip install wheel
+          python -m pip install build
 
       - name: Install linux dependencies
         if: startsWith( matrix.cfg.os, 'ubuntu' )
@@ -133,7 +134,7 @@ jobs:
       - name: Install and test
         run: |
           export PATH="$pythonLocation:$PATH"
-          python setup.py sdist
+          python -m build
           echo "done sdist"
           VERSION=$(grep 'version=' setup.py | cut -d\' -f2)
           python -m pip install dist/windmapper-$VERSION.tar.gz
@@ -146,9 +147,9 @@ jobs:
           if [ "$TEST_CONDA" = "sys-python" ]; then
 
             if [ "$RUNNER_OS" = "macOS" ]; then
-              python setup.py sdist
+              python -m build
             else
-              python setup.py sdist #no binary wheels on linux at the moment as we link against non PEP0513 .so
+              python -m build #no binary wheels on linux at the moment as we link against non PEP0513 .so
               #https://www.python.org/dev/peps/pep-0513/
             fi
 
