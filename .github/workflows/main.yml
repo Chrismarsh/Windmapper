@@ -94,7 +94,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install libgdal-dev
           sudo apt-get install gdal-bin
-          sudo aot-get install libboost-all-dev
+          sudo aot-get install libboost-date-time1.71-dev libboost-program-options1.71-dev libboost-test1.71-dev
 
           if [[ "$UBUNTU_VER" = "ubuntu-20.04" ]]; then
             sudo apt-get install python3-gdal
