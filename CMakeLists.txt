@@ -30,8 +30,24 @@ CPMAddPackage(
     "CMAKE_CXX_STANDARD 11"
 )
 
+MACRO(SUBDIRLIST result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+      LIST(APPEND dirlist ${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO()
+
 message(STATUS ${CMAKE_INSTALL_PREFIX})
-message(STATUS ${PYTHON_PREFIX}/bin/lib/)
+SUBDIRLIST(SUBDIRS ${CMAKE_INSTALL_PREFIX})
+
+message(STATUS ${PYTHON_PREFIX})
+SUBDIRLIST(SUBDIRS ${PYTHON_PREFIX})
+
+
 file(COPY ${CMAKE_INSTALL_PREFIX}/lib/ DESTINATION ${PYTHON_PREFIX}/bin/lib/)
 file(COPY ${CMAKE_INSTALL_PREFIX}/share/ DESTINATION ${PYTHON_PREFIX}/bin/share/)
 file(COPY ${CMAKE_INSTALL_PREFIX}/bin/WindNinja_cli DESTINATION ${PYTHON_PREFIX}/bin/bin/)
