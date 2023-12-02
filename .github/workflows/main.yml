@@ -47,7 +47,7 @@ jobs:
 
         python-version: [ 3.8 ]
         test-conda: [ "sys-python" ] #"conda-python",
-        use-conan: [ 'use-conan' ]  #'use-sys-lib',
+        use-conan: [ 'use-sys-lib' ]  #'', use-conan
 
         cfg:
           - {os: "ubuntu-20.04", compiler: "gcc", version: 9}
@@ -79,9 +79,7 @@ jobs:
       - name: Install dependencies
         run: |
           export PATH="$pythonLocation:$PATH"
-          python -m pip install conan --upgrade
           python -m pip install twine
-          python -m pip install conan
           python -m pip install scikit-build>=0.10.0
           python -m pip install ninja
           python -m pip install wheel
@@ -109,13 +107,6 @@ jobs:
           export PATH="$pythonLocation:$PATH"
           brew install gdal
 
-
-      - name: Use conan
-        if: ${{ matrix.use-conan == 'use-conan' }}
-        uses: allenevans/set-env@v2.0.0
-        with:
-          USE_CONAN: "TRUE"
-
       - name: env linux
         if: startsWith( matrix.cfg.os, 'ubuntu' )
         uses: allenevans/set-env@v2.0.0
@@ -138,27 +129,6 @@ jobs:
         uses: allenevans/set-env@v2.0.0
         with:
           TEST_CONDA: ${{ matrix.test-conda }}
-
-      - name: Setup conan
-        if: ${{ matrix.use-conan == 'use-conan' }}
-        run: |
-          conan profile new default --detect
-          conan config install https://github.com/Chrismarsh/conan-config.git
-          
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            conan profile update settings.os.distro="$CFG_OS" default
-          else
-            VERSION=$(echo "$CFG_OS" | cut -d'-' -f2)
-            echo "MacOS $VERSION"
-            if [[ "$VERSION" == "11" ]]; 
-            then 
-              VERSION="11.0"
-            fi
-            conan profile update settings.os.version="$VERSION" default
-          fi
-          cat ~/.conan/profiles/default
-        env:
-          CFG_OS: ${{matrix.cfg.os}}
 
       - name: Install and test
         run: |
