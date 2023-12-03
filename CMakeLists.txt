@@ -30,33 +30,37 @@ CPMAddPackage(
     "CMAKE_CXX_STANDARD 11"
 )
 
-MACRO(SUBDIRLIST result curdir)
-  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
-  SET(dirlist "")
-  FOREACH(child ${children})
-    IF(IS_DIRECTORY ${curdir}/${child})
-      LIST(APPEND dirlist ${child})
-    ENDIF()
-  ENDFOREACH()
-  SET(${result} ${dirlist})
-ENDMACRO()
+# MACRO(SUBDIRLIST result curdir)
+#   FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+#   SET(dirlist "")
+#   FOREACH(child ${children})
+#     IF(IS_DIRECTORY ${curdir}/${child})
+#       LIST(APPEND dirlist ${child})
+#     ENDIF()
+#   ENDFOREACH()
+#   SET(${result} ${dirlist})
+# ENDMACRO()
 
-message(STATUS ${CMAKE_INSTALL_PREFIX})
-SUBDIRLIST(SUBDIRS ${CMAKE_INSTALL_PREFIX})
+# message(STATUS ${CMAKE_INSTALL_PREFIX})
+# SUBDIRLIST(SUBDIRS ${CMAKE_INSTALL_PREFIX})
+# FOREACH(subdir ${SUBDIRS})
+#   message(STATUS "hi -- ${subdir}")
+# ENDFOREACH()
 
-message(STATUS ${PYTHON_PREFIX})
-SUBDIRLIST(SUBDIRS ${PYTHON_PREFIX})
+# message(STATUS ${PYTHON_PREFIX})
+# SUBDIRLIST(SUBDIRS ${PYTHON_PREFIX})
 
 
-file(COPY ${CMAKE_INSTALL_PREFIX}/lib/ DESTINATION ${PYTHON_PREFIX}/bin/lib/)
-file(COPY ${CMAKE_INSTALL_PREFIX}/share/ DESTINATION ${PYTHON_PREFIX}/bin/share/)
-file(COPY ${CMAKE_INSTALL_PREFIX}/bin/WindNinja_cli DESTINATION ${PYTHON_PREFIX}/bin/bin/)
+# file(COPY ${WindNinja_BINARY_DIR}/lib/ DESTINATION ${PYTHON_PREFIX}/bin/lib/)
+# file(COPY ${CMAKE_INSTALL_PREFIX}/share/ DESTINATION ${PYTHON_PREFIX}/bin/share/)
+# file(COPY ${CMAKE_INSTALL_PREFIX}/bin/WindNinja_cli DESTINATION ${PYTHON_PREFIX}/bin/bin/)
 
 
 # This approach won't work for installing outside of cmake install root
-# install( DIRECTORY ${CMAKE_INSTALL_PREFIX}/lib/
+
+
 #          DESTINATION ${PYTHON_PREFIX}/bin/lib/
-# )
+
 # install( DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/
 #          DESTINATION ${PYTHON_PREFIX}/bin/share/
 # )
