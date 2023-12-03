@@ -19,9 +19,10 @@ Linux
 On linux, depending on the distro used, you may need to also install the gdal binaries. On Ubuntu this is
 ::
 
-   sudo apt-get install libgdal-dev
-   sudo apt-get install gdal-bin
-   sudo apt-get install python-gdal
+      sudo apt-get update
+      sudo apt-get install libgdal-dev
+      sudo apt-get install gdal-bin
+      sudo apt-get install libboost-all-dev
 
 MacOS
 ******
