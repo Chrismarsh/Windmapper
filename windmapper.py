@@ -63,7 +63,7 @@ def main():
     # default path assumes we are running out of pip or we have a symlink @ ./bin/WindNinja_cli
     wn_exe = os.path.join(
         os.path.dirname(
-            os.path.abspath(__file__)), 'bin', 'WindNinja_cli')
+            os.path.abspath(__file__)), 'WindNinja_cli')
 
     if hasattr(X, 'wn_exe'):
         wn_exe = X.wn_exe
