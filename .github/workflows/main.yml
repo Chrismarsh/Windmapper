@@ -147,7 +147,7 @@ jobs:
       - name: Install and test
         run: |
           export PATH="$pythonLocation:$PATH"
-          python -m pip install windmapper
+          python -m pip install --editable  .
           cd examples/existing_DEM
           windmapper.py param_download_DEM.py
 
