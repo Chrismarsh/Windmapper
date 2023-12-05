@@ -88,7 +88,7 @@ args =   {'name': 'windmapper',
             },
             'scripts': ["windmapper.py", 'scripts/rio_merge.py', "cfg/cli_massSolver.cfg"],
             'install_requires': [gdal_dependency(),
-                                 'numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio', 'mpi4py'],
+                                 'numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio', 'mpi4py', 'cloudpickle'],
             'setup_requires': setup_requires,
             'python_requires': '>=3.6'}
 

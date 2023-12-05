@@ -41,17 +41,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # python-version: [3.7]
-        # test-conda: ["sys-python"]
-        # use-conan: ['use-conan']
-
         python-version: [ 3.8 ]
         test-conda: [ "sys-python" ] #"conda-python",
-        use-conan: [ 'use-sys-lib' ]  #'', use-conan
+
 
         cfg:
+          - {os: "ubuntu-20.04", compiler: "gcc", version: 9}
           - {os: "ubuntu-22.04", compiler: "gcc", version: 11}
-          - {os: "macos-12", compiler: "apple-clang", version: "14.0"}
           - {os: "macos-13", compiler: "apple-clang", version: "14.0"}
 
 
@@ -95,10 +91,8 @@ jobs:
           sudo apt-get install libgdal-dev
           sudo apt-get install gdal-bin
           sudo apt-get install libboost-all-dev
+          sudo apt-get install python3-gdal
 
-          if [[ "$UBUNTU_VER" = "ubuntu-20.04" ]]; then
-            sudo apt-get install python3-gdal
-          fi
 
       - name: Install macos dependencies
         if: startsWith( matrix.cfg.os, 'macos' )
@@ -130,16 +124,6 @@ jobs:
         with:
           TEST_CONDA: ${{ matrix.test-conda }}
 
-      - name: Install and test
-        run: |
-          export PATH="$pythonLocation:$PATH"
-          python -m build
-          echo "done sdist"
-          VERSION=$(grep 'version=' setup.py | cut -d\' -f2)
-          python -m pip install dist/windmapper-$VERSION.tar.gz
-          cd examples/download_DEM
-#          windmapper.py param_download_DEM.py
-
       - name: Deploy
         run: |
           export PATH="$pythonLocation:$PATH"
@@ -157,6 +141,16 @@ jobs:
             else
               echo "Branch $CI_REF_NAME is not stable/*"
             fi
+          fi
+      
+
+      - name: Install and test
+        run: |
+          if [[ $CI_REF_NAME == "stable/"* ]]; then
+            export PATH="$pythonLocation:$PATH"
+            python -m pip install windmapper --no-cache
+            cd examples/existing_DEM
+            windmapper.py param_existing_DEM.py
           fi
 
         env:
