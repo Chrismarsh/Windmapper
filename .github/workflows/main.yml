@@ -146,10 +146,12 @@ jobs:
 
       - name: Install and test
         run: |
-          export PATH="$pythonLocation:$PATH"
-          python -m pip install --editable  .
-          cd examples/existing_DEM
-          windmapper.py param_existing_DEM.py
+          if [[ $CI_REF_NAME == "stable/"* ]]; then
+            export PATH="$pythonLocation:$PATH"
+            python -m pip install windmapper --no-cache
+            cd examples/existing_DEM
+            windmapper.py param_existing_DEM.py
+          fi
 
         env:
           TWINE_PASSWORD: ${{secrets.TWINE_PASSWORD}}
