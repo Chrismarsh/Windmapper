@@ -46,6 +46,7 @@ jobs:
 
 
         cfg:
+          - {os: "ubuntu-20.04", compiler: "gcc", version: 9}
           - {os: "ubuntu-22.04", compiler: "gcc", version: 11}
           - {os: "macos-13", compiler: "apple-clang", version: "14.0"}
 
@@ -90,10 +91,8 @@ jobs:
           sudo apt-get install libgdal-dev
           sudo apt-get install gdal-bin
           sudo apt-get install libboost-all-dev
+          sudo apt-get install python3-gdal
 
-          if [[ "$UBUNTU_VER" = "ubuntu-20.04" ]]; then
-            sudo apt-get install python3-gdal
-          fi
 
       - name: Install macos dependencies
         if: startsWith( matrix.cfg.os, 'macos' )
