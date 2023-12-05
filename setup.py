@@ -19,11 +19,14 @@ _MAP = {
     'off': False,
     '0': False
 }
+
+
 def strtobool(value):
     try:
         return _MAP[str(value).lower()]
     except KeyError:
         raise ValueError('"{}" is not a valid bool value'.format(value))
+
 
 build_wn = True
 try:
@@ -33,13 +36,20 @@ except:
 
 print(f'Build WindNinja? {build_wn}')
 
-def get_installed_gdal_version():
+
+def gdal_dependency():
     try:
         version = subprocess.run(["gdal-config", "--version"], stdout=subprocess.PIPE).stdout.decode()
-
         version = version.replace('\n', '')
-        version = "=="+version+".*"
-        return version
+
+        gdal_depends = ''
+        if packaging.version.parse(version) >= packaging.version.parse("3.5.0"):
+            # >= 3.5 required for this type of gdal python binding install
+            gdal_depends = f'gdal[numpy]=={version}.*'
+        else:
+            gdal_depends = f'pygdal=={version}.*'
+
+        return gdal_depends
     except FileNotFoundError as e:
         raise(""" ERROR: Could not find the system install of GDAL. 
                   Please install it via your package manage of choice.
@@ -65,7 +75,7 @@ else:
     from setuptools import setup
 
 args =   {'name': 'windmapper',
-            'version': '2.1.3',
+            'version': '2.1.4',
             'description': 'Windfield library generation',
             'long_description': "Generates windfields",
             'author': 'Chris Marsh',
@@ -77,7 +87,7 @@ args =   {'name': 'windmapper',
             '': 'pysrc',
             },
             'scripts': ["windmapper.py", 'scripts/rio_merge.py', "cfg/cli_massSolver.cfg"],
-            'install_requires': ['gdal[numpy]' + get_installed_gdal_version()+',>=3.5.0', # >= 3.5 required for this type of gdal python binding install
+            'install_requires': [gdal_dependency(),
                                  'numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio', 'mpi4py'],
             'setup_requires': setup_requires,
             'python_requires': '>=3.6'}
