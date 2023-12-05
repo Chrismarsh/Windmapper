@@ -41,18 +41,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # python-version: [3.7]
-        # test-conda: ["sys-python"]
-        # use-conan: ['use-conan']
-
         python-version: [ 3.8 ]
         test-conda: [ "sys-python" ] #"conda-python",
-        use-conan: [ 'use-sys-lib' ]  #'', use-conan
+
 
         cfg:
-          - {os: "ubuntu-20.04", compiler: "gcc", version: 10.5.0}
           - {os: "ubuntu-22.04", compiler: "gcc", version: 11}
-          - {os: "macos-12", compiler: "apple-clang", version: "14.0"}
           - {os: "macos-13", compiler: "apple-clang", version: "14.0"}
 
 
