@@ -149,7 +149,7 @@ jobs:
           export PATH="$pythonLocation:$PATH"
           python -m pip install --editable  .
           cd examples/existing_DEM
-          windmapper.py param_download_DEM.py
+          windmapper.py param_existing_DEM.py
 
         env:
           TWINE_PASSWORD: ${{secrets.TWINE_PASSWORD}}
