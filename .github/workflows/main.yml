@@ -53,7 +53,6 @@ jobs:
           - {os: "ubuntu-22.04", compiler: "gcc", version: 11}
           - {os: "macos-12", compiler: "apple-clang", version: "14.0"}
           - {os: "macos-13", compiler: "apple-clang", version: "14.0"}
-          - {os: "macos-13-arm64", compiler: "apple-clang", version: "14.0"}
 
 
     # Steps represent a sequence of tasks that will be executed as part of the job
