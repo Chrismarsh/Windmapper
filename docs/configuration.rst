@@ -133,6 +133,14 @@ Optional
     write_ascii_output       = true
     write_farsite_atm        = false
 
+.. confval:: num_threads
+
+    :default:
+
+    Number of threads for the underlying Windninja call. Defaults to 1 thread as parallelism via the MPI ranks is
+    more scalable. However, if each Windninja run is large enough to have memory pressure, reducing the number of
+    MPI ranks and increasing threads may be more optimal. ``num_threads * MPI_nworkers`` must not exceed the total
+    number of logical CPUs available.
 
 .. confval:: wind_average
 
@@ -170,7 +178,10 @@ By default Windmapper will use MPI to launch the WindNinja tasks.
 
     Set this to limit the number of processors used.
 
-If Windmapper is used on a cluster to process a large domain, the use of a job scheduler, such as SLURM, may be optimal.
+    If Windmapper is used on a cluster to process a large domain, the use of a job scheduler, such as SLURM, may be optimal.
+    However, if each Windninja run is large enough to have memory pressure, reducing the number of
+    MPI ranks and increasing threads may be more optimal. ``num_threads * MPI_nworkers`` must not exceed the total
+    number of logical CPUs available.
 
 .. confval:: MPI_exec_str
 

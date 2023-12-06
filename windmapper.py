@@ -79,17 +79,24 @@ def main():
 
     # on macos M1, the 2 efficiency cores don't seem to be targetable by OpenMPI?
     # Setup file containing WN configuration
-    nworkers = os.cpu_count() or 1
+    MPI_nworkers = os.cpu_count() or 1
 
-    # on linux we can ensure that we respect cpu affinity
+    # on linux we can ensure that we respect cpu affinity, more reliable than cpu_count()
     if 'sched_getaffinity' in dir(os):
-        nworkers = len(os.sched_getaffinity(0))
+        MPI_nworkers = len(os.sched_getaffinity(0))
 
-    MPI_nworkers = nworkers
     if hasattr(X, 'MPI_nworkers'):
         MPI_nworkers = X.MPI_nworkers
     elif not hasattr(X, 'MPI_nworkers') and MPI_exec_str:
         raise RuntimeError('If MPI_exec_str is provided, then MPI_nworkers must also be provided')
+
+    print(f'Using {MPI_nworkers} MPI workers')
+
+    num_threads = 1
+    if hasattr(X, 'num_threads'):
+        num_threads = X.num_threads
+
+    print(f'Using {num_threads} threads for Windninja')
 
     # This is used later in the MPI subprocess call
     WINDNINJA_DATA = os.path.join(os.path.dirname(wn_exe), '..', 'share', 'windninja')
@@ -167,7 +174,7 @@ def main():
 
 
     # ensure correct formatting on the output
-    fic_config = F"""num_threads = {nworkers}  
+    fic_config = F"""num_threads = {num_threads}  
 initialization_method = domainAverageInitialization 
 units_mesh_resolution = m 
 input_speed = 10.0 
