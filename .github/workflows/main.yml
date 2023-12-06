@@ -100,6 +100,7 @@ jobs:
           export PATH="$pythonLocation:$PATH"
           brew install gdal
           brew install boost
+          brew install open-mpi
 
       - name: env linux
         if: startsWith( matrix.cfg.os, 'ubuntu' )

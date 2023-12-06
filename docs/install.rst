@@ -24,6 +24,7 @@ On linux, depending on the distro used, you may need to also install the gdal bi
       sudo apt-get install gdal-bin
       sudo apt-get install libboost-all-dev
       sudo apt-get install python3-gdal
+      sudo apt-get install openmpi-bin libopenmpi-dev
 
 
 
@@ -35,8 +36,9 @@ On MacOS, the gdal binaries should be installed from homebrew
 
 ::
 
-   brew install gdal
-   brew install boost
+    brew install gdal
+    brew install boost
+    brew install open-mpi
 
 
 Setup Python environment
