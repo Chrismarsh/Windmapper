@@ -23,6 +23,9 @@ On linux, depending on the distro used, you may need to also install the gdal bi
       sudo apt-get install libgdal-dev
       sudo apt-get install gdal-bin
       sudo apt-get install libboost-all-dev
+      sudo apt-get install python3-gdal
+
+
 
 MacOS
 ******
@@ -32,7 +35,8 @@ On MacOS, the gdal binaries should be installed from homebrew
 
 ::
 
-   brew install gdal boost
+   brew install gdal
+   brew install boost
 
 
 Setup Python environment
@@ -48,7 +52,7 @@ The following python requirements will be installed by ``pip``:
 
 ::
 
-    'pygdal','numpy','scipy','elevation','pyproj','tqdm','rasterio'
+    'numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio', 'mpi4py', 'cloudpickle'
 
 
 Install Windmapper
@@ -58,6 +62,7 @@ Activate the venv (if used), and then build and install windmapper.
 ::
 
     pip install windmapper
+
 
 To not automatically build WindMapper,
 
