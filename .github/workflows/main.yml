@@ -142,7 +142,9 @@ jobs:
               echo "Branch $CI_REF_NAME is not stable/*"
             fi
           fi
-      
+        env:
+          TWINE_PASSWORD: ${{secrets.TWINE_PASSWORD}}
+          TWINE_USERNAME: ${{secrets.TWINE_USERNAME}}
 
       - name: Install and test
         run: |
@@ -153,6 +155,3 @@ jobs:
             windmapper.py param_existing_DEM.py
           fi
 
-        env:
-          TWINE_PASSWORD: ${{secrets.TWINE_PASSWORD}}
-          TWINE_USERNAME: ${{secrets.TWINE_USERNAME}}
