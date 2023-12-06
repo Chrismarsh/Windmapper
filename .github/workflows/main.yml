@@ -152,6 +152,7 @@ jobs:
           if [[ $CI_REF_NAME == "stable/"* ]]; then
             export PATH="$pythonLocation:$PATH"
             python -m pip install windmapper --no-cache
+            python -m pip install --no-cache-dir --force-reinstall gdal[numpy]
             cd examples/existing_DEM
             windmapper.py param_existing_DEM.py
           fi
