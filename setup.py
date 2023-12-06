@@ -45,7 +45,7 @@ def gdal_dependency():
         gdal_depends = ''
         if packaging.version.parse(version) >= packaging.version.parse("3.5.0"):
             # >= 3.5 required for this type of gdal python binding install
-            gdal_depends = f'gdal[numpy]=={version}.*'
+            gdal_depends = f'GDAL[numpy]=={version}.*'
         else:
             gdal_depends = f'pygdal=={version}.*'
 
@@ -87,8 +87,8 @@ args =   {'name': 'windmapper',
             '': 'pysrc',
             },
             'scripts': ["windmapper.py", 'scripts/rio_merge.py', "cfg/cli_massSolver.cfg"],
-            'install_requires': [gdal_dependency(),
-                                 'numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio', 'mpi4py', 'cloudpickle'],
+            'install_requires': ['numpy', 'scipy', 'elevation', 'pyproj', 'tqdm', 'rasterio', 'mpi4py', 'cloudpickle',
+                                 gdal_dependency()],
             'setup_requires': setup_requires,
             'python_requires': '>=3.6'}
 
