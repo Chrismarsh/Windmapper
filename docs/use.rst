@@ -45,3 +45,42 @@ Once Windmapper has run, the output folder will have a set of files:
     the wind comes from. The U/V refer to either the U or V component speedup. And the ``_spd_up_X`` suffix, e.g., ``_spd_up_1000``, is the
     wind speed (:math:`W=sqrt(U^2+V^2)`) with the given averaging distanced as specified in the configuration (1000 m default).
 
+
+Troubleshooting
+-------------------
+
+MPI slots
+**********
+If an error about MPI slots is raised, set the MPI_nworkers configuration parameter to a smaller number. If it hasn't been
+set, set it to 1 or 2 less than the slots reported in the error.
+
+
+GDAL
+*****
+
+If you recieve an error about GDAL ``_gdal_array``, like:
+
+::
+
+     Traceback (most recent call last):
+      File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/windmapper_utls/MPI_call_WN_1dir.py", line 190, in <module>
+        main(*sys.argv[1:])
+      File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/windmapper_utls/MPI_call_WN_1dir.py", line 178, in main
+        call_WN_1dir(WINDNINJA_DATA, gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, nopt_x, nopt_y, nx,
+      File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/windmapper_utls/MPI_call_WN_1dir.py", line 105, in call_WN_1dir
+        ang = gtif.GetRasterBand(1).ReadAsArray()
+      File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/osgeo/gdal.py", line 5278, in ReadAsArray
+        from osgeo import gdal_array
+      File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/osgeo/gdal_array.py", line 10, in <module>
+        from . import _gdal_array
+    ImportError: cannot import name '_gdal_array' from 'osgeo' (/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/osgeo/__init__.py)
+
+
+Then force the reinstall of gdal via
+
+::
+
+    python -m pip install --no-cache-dir --force-reinstall gdal[numpy]
+
+
+This error results from gdal being install after numpy.
