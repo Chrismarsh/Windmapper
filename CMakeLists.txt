@@ -22,12 +22,13 @@ endif ()
 CPMAddPackage(
   NAME WindNinja
   GITHUB_REPOSITORY Chrismarsh/windninja
-  GIT_TAG 3.9.3
+  GIT_TAG 3.9.4
   OPTIONS
     "NINJA_QTGUI FALSE"
     "NINJAFOAM FALSE"
     "OPENMP_SUPPORT FALSE"
     "CMAKE_CXX_STANDARD 11"
+    "BUILD_SHARED_LIBS OFF"
 )
 
 # MACRO(SUBDIRLIST result curdir)
