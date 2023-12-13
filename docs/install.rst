@@ -71,3 +71,30 @@ To not automatically build WindMapper,
 ::
 
     BUILD_WINDNINJA=FALSE pip install windmapper
+
+
+Troublshooting
+--------------------
+If you get an error about ``_gdal_array``
+
+::
+
+ Traceback (most recent call last):
+  File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/windmapper_utls/MPI_call_WN_1dir.py", line 190, in <module>
+    main(*sys.argv[1:])
+  File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/windmapper_utls/MPI_call_WN_1dir.py", line 178, in main
+    call_WN_1dir(WINDNINJA_DATA, gdal_prefix, user_output_dir, fic_config_WN, list_tif_2_vrt, nopt_x, nopt_y, nx,
+  File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/windmapper_utls/MPI_call_WN_1dir.py", line 105, in call_WN_1dir
+    ang = gtif.GetRasterBand(1).ReadAsArray()
+  File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/osgeo/gdal.py", line 5278, in ReadAsArray
+    from osgeo import gdal_array
+  File "/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/osgeo/gdal_array.py", line 10, in <module>
+    from . import _gdal_array
+  ImportError: cannot import name '_gdal_array' from 'osgeo' (/Users/runner/hostedtoolcache/Python/3.8.18/x64/lib/python3.8/site-packages/osgeo/__init__.py)
+
+
+Then reinstall gdal with numpy
+
+::
+
+    python -m pip install --no-cache-dir --force-reinstall gdal[numpy]

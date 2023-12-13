@@ -52,7 +52,19 @@ Troubleshooting
 MPI slots
 **********
 If an error about MPI slots is raised, set the MPI_nworkers configuration parameter to a smaller number. If it hasn't been
-set, set it to 1 or 2 less than the slots reported in the error.
+set, set it to 1 or 2 less than the slots reported in the error. On single-core machines you will need to enable
+oversubscription. This can be done for OpenMPI
+
+::
+
+    export OMPI_MCA_rmaps_base_oversubscribe=true; windmapper.py my-config.py
+
+or by pernamentally enabling it
+
+::
+
+    echo rmaps_base_oversubscribe=true >> $HOME/.openmpi/mca-params.conf
+
 
 
 GDAL
