@@ -6,6 +6,10 @@ res_wind = 150
 # Number of parallel processes for windmap generation
 MPI_nworkers = 1
 
+# number of threads for Windninja call
+# more MPI workers will be generatlly faster
+num_threads = 1
+
 # Number of wind speed categories (every 360/ncat degrees)
 ncat = 2
 
