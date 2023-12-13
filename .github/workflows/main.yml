@@ -153,17 +153,8 @@ jobs:
             export PATH="$pythonLocation:$PATH"
             python -m pip install windmapper --no-cache
 
-#            with GDAL, esp on macos, the base package seems sensitive to gdal having a broken numpy connection
-#
-#            python -c "from osgeo import gdal; import packaging.version; exit(0) if packaging.version.parse('3.5.0') <= packaging.version.parse(gdal.__version__) else exit(1)"
-#            if [[ "$?" -eq 0 ]]; then
-#
-#                echo "GDAL version >= 3.5.0"
-#                python -m pip install --no-cache-dir --force-reinstall gdal[numpy]
-#            fi
-
             if [ "$RUNNER_OS" = "macOS" ]; then
-               python -m pip install --no-cache-dir --force-reinstall gdal[numpy] 
+              python -m pip install --no-cache-dir --force-reinstall gdal[numpy] 
             fi
             
             cd examples/existing_DEM
