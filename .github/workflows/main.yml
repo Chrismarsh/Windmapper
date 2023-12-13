@@ -153,8 +153,8 @@ jobs:
             export PATH="$pythonLocation:$PATH"
             python -m pip install windmapper --no-cache
             
-            is_gte35 = $(python -c "from osgeo import gdal; import packaging.version; exit(0) if packaging.version.parse('3.5.0') <= packaging.version.parse(gdal.__version__) else exit(1)")
-            if [ "$return_code" -eq 0 ]; then
+            is_gte35=$(python -c "from osgeo import gdal; import packaging.version; exit(0) if packaging.version.parse('3.5.0') <= packaging.version.parse(gdal.__version__) else exit(1)")
+            if [ "$is_gte35" -eq 0 ]; then
                 echo "GDAL version >= 3.5.0"
                 python -m pip install --no-cache-dir --force-reinstall gdal[numpy] # skip bizarre gdal issues 
             fi
