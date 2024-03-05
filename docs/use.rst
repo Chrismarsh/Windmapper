@@ -65,7 +65,8 @@ or by pernamentally enabling it
 
     echo rmaps_base_oversubscribe=true >> $HOME/.openmpi/mca-params.conf
 
-
+More details can be found here
+https://github.com/mpi4py/mpi4py/discussions/441
 
 GDAL
 *****
