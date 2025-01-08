@@ -9,9 +9,7 @@ Ensure gdal system libraries are installed and then
 
 ``pip install windmapper``
 
-Requires WindNinja to be installed. 
-To automatically build WindNinja use:
-``BUILD_WINDNINJA=TRUE pip install windmapper``
+Spack can also be used to install windmapper -- please see documentation below.
 
 # Documentation 
-Documentation and full instructions on use can be found [here](https://windmapper.readthedocs.io/en/latest/)
+Documentation and full instructions on use can be found [here](https://windmapper.readthedocs.io)
