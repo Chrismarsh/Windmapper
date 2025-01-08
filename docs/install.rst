@@ -95,6 +95,8 @@ Then reinstall gdal with numpy
 
 Spack
 ------
+Instead of installing with ``pip``, the package manager ``spack`` can be used instead.
+
 Install spack
 +++++++++++++++
 Install `spack <https://spack-tutorial.readthedocs.io/en/latest/tutorial_basics.html>`__
