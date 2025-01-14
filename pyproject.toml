@@ -1,2 +1,33 @@
 [build-system]
-requires = ["setuptools", "build", "wheel", "scikit-build>=0.11.1","ninja", "packaging"]
+requires = ["scikit-build-core"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "windmapper"
+version = "2.1.17"
+authors = [
+    {name="Chris Marsh"}
+]
+description ="""Windfield library generation"""
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    'numpy',
+    'scipy',
+    'elevation',
+    'pyproj',
+    'tqdm',
+    'rasterio',
+    'cloudpickle',
+    'gdal[numpy]',
+    'mpi4py',
+]
+
+[project.urls]
+Homepage = "https://github.com/Chrismarsh/Windmapper"
+
+[tool.scikit-build]
+sdist.exclude = ["examples", "docs", "_config.yml", "dist"]
+
+[project.scripts]
+windmapper = "windmapper:main"

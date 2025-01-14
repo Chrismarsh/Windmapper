@@ -5,9 +5,12 @@ Windmapper is a python tool and a set of algorithms for producing and using pre-
 ![](docs/images/WM-main.png)
 
 # Installation
-Ensure gdal system libraries are installed and then
 
-``pip install windmapper``
+The default ``pip install windmapper`` will build windmapper without Windninja. However Windninja is required to run.
+
+To build Windninja, ensure gdal, boost, and mpi system libraries are installed and then
+
+``BUILD_WINDNINJA=1 pip install windmapper``
 
 Spack can also be used to install windmapper -- please see documentation below.
 
