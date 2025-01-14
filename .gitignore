@@ -12,3 +12,6 @@ MANIFEST
 dist/
 *.egg-info
 _skbuild/
+/spack-deploy/*
+/dist/*
+/implimentation/*
