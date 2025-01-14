@@ -31,3 +31,4 @@ sdist.exclude = ["examples", "docs", "_config.yml", "dist"]
 
 [project.scripts]
 windmapper = "windmapper:main"
+
