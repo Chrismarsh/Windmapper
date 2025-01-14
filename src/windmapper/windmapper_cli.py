@@ -60,17 +60,19 @@ def main():
 
     # path to Wind Ninja executable
 
-    # default path assumes we are running out of pip or we have a symlink @ ./bin/WindNinja_cli
-    wn_exe = os.path.join(
-        os.path.dirname(
-            os.path.abspath(__file__)), 'WindNinja_cli')
+    # default path assumes that WN is on $PATH
+    wn_exe = shutil.which('WindNinja_cli')
 
     if hasattr(X, 'wn_exe'):
         wn_exe = X.wn_exe
 
     if not os.path.exists(wn_exe):
-        print('ERROR: Invalid path for WindNinja_cli. Consider specifying a `wn_exe` config option or confirm it is correct.')
-        print(f'Path = {wn_exe}')
+        if hasattr(X, 'wn_exe'):
+            print('ERROR: Path to WindNinja_cli not found. Confirm `wn_exe` config option is correct.')
+            print(f'Path = {wn_exe}')
+        else:
+            print(
+                'ERROR: WindNinja_cli not found on $PATH. Ensure it is is or  Consider specifying a `wn_exe` config option')
         exit(-1)
 
     MPI_exec_str = None
