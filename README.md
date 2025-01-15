@@ -16,3 +16,8 @@ Spack can also be used to install windmapper -- please see documentation below.
 
 # Documentation 
 Documentation and full instructions on use can be found [here](https://windmapper.readthedocs.io)
+
+# Implimentation
+
+The directory `implementation/` contains a jupyter notebook with an example implimentation of the code. It is not 
+vectorized to aid in readability. However, this makes it very very slow!

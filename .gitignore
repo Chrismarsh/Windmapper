@@ -14,4 +14,8 @@ dist/
 _skbuild/
 /spack-deploy/*
 /dist/*
-/implimentation/*
+/implementation/._view
+/implementation/.spack-env
+/implementation/view
+/implementation/windmapper_config
+/implementation/spack.lock

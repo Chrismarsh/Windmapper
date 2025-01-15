@@ -1,0 +1,20 @@
+spack:
+  specs:
+    - "py-numpy"
+    - "py-importlib-metadata"
+    - 'py-xarray +io +viz +parallel'
+    - "py-netcdf4"
+    - "py-pandas"
+    - "gdal@3.5: +python  +hdf5 +netcdf"
+    - "py-dask"
+    - "py-pyproj"
+    - "py-matplotlib"
+    - "py-jupyterlab"
+    - "py-natsort"
+    - "py-rioxarray"
+    - "py-rasterio"
+    - "py-tdqm"
+    - "py-windmapper"
+    - "windninja"
+  view: ./view
+
