@@ -2,6 +2,10 @@
 
 Windmapper is a python tool and a set of algorithms for producing and using pre-computed libraries of wind field used for wind downscaling. 
 
+Paper:
+Marsh, C. B., Vionnet, V. & Pomeroy, J. W. Windmapper: An Efficient Wind Downscaling Method for Hydrological Models. [Water Resour Res 59, (2023).](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2022WR032683)
+  
+
 ![](docs/images/WM-main.png)
 
 # Installation
