@@ -7,6 +7,47 @@ Install
 WindMapper requires WindNinja to be installed to work and installing WindMapper will automatically build WindNinja by default.
 
 
+Spack
+------
+Installing with Spack is the easiest way of handling the (compled) Dependencies
+
+
+Install spack
++++++++++++++++
+Install `spack <https://spack-tutorial.readthedocs.io/en/latest/tutorial_basics.html>`__
+
+Use the git repository and use the develop branch, as significant bug fixes to packages CHM uses have been made in
+this branch.
+
+Configure Spack
++++++++++++++++++++
+It is critical to ensure spack is correctly
+configured, as described in the `Spack Getting Started <https://spack.readthedocs.io/en/latest/getting_started.html>`__
+guide.
+
+If you need to build a compiler via spack to use and the spack libraries, this is the time to do it.
+Otherwise, ensure
+the `external compiler is found by
+spack <https://spack.readthedocs.io/en/latest/getting_started.html#spack-compiler-find>`__ and correctly configured.
+
+If you use a system MPI or intel-oneapi-(mkl|tbb) (i.e., a not-spack built version), this is when it should be configured
+`as a spack external <https://spack.readthedocs.io/en/latest/packages_yaml.html#external-packages>`__ package.
+
+Install windmapper
++++++++++++++++++++++++++
+
+::
+
+  spack repo add https://github.com/Chrismarsh/spack-repo.git
+  spack install py-windmapper
+
+
+
+
+Hard way
+=========
+This is also barely tested anymore so YMMV
+
 Dependencies
 ---------------
 GDAL >= 3.5 with netcdf, curl
@@ -93,59 +134,5 @@ Then reinstall gdal with numpy
     python -m pip install --no-cache-dir --force-reinstall gdal[numpy]
 
 
-Spack
-------
-Instead of installing with ``pip``, the package manager ``spack`` can be used instead.
-
-Install spack
-+++++++++++++++
-Install `spack <https://spack-tutorial.readthedocs.io/en/latest/tutorial_basics.html>`__
-
-Use the git repository and use the develop branch, as significant bug fixes to packages CHM uses have been made in
-this branch.
-
-Configure Spack
-+++++++++++++++++++
-It is critical to ensure spack is correctly
-configured, as described in the `Spack Getting Started <https://spack.readthedocs.io/en/latest/getting_started.html>`__
-guide.
-
-If you need to build a compiler via spack to use and the spack libraries, this is the time to do it.
-Otherwise, ensure
-the `external compiler is found by
-spack <https://spack.readthedocs.io/en/latest/getting_started.html#spack-compiler-find>`__ and correctly configured.
-
-If you use a system MPI or intel-oneapi-(mkl|tbb) (i.e., a not-spack built version), this is when it should be configured
-`as a spack external <https://spack.readthedocs.io/en/latest/packages_yaml.html#external-packages>`__ package.
-
-Some libraries that are used are not currently in mainline spack. Until they have been accepted, please clone
-the spack-repo
-
-::
-
-   git clone https://github.com/Chrismarsh/spack-repo.git /some/path/here/
 
 
-then create ``repos.yml`` in ``~/.spack`` and add the path to the above cloned ``spack-repo``.
-It will look like this
-
-::
-
-    $ cat ~/.spack/repos.yaml
-    	repos:
-    	  - /some/path/here/spack-repo
-    	  - $spack/var/spack/repos/builtin
-
-
-Then install windmapper
-
-::
-
-    $ spack install py-windmapper
-
-To use:
-
-::
-
-    $ spack load windninja
-    $ spack load py-windmapper
