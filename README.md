@@ -2,13 +2,23 @@
 
 Windmapper is a python tool and a set of algorithms for producing and using pre-computed libraries of wind field used for wind downscaling. 
 
-Paper:
+## Paper
 Marsh, C. B., Vionnet, V. & Pomeroy, J. W. Windmapper: An Efficient Wind Downscaling Method for Hydrological Models. [Water Resour Res 59, (2023).](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2022WR032683)
   
 
 ![](docs/images/WM-main.png)
 
 # Installation
+
+Because Windmapper depends on WindNinja, it is easiest to use [Spack](https://spack.readthedocs.io/) to install Windmapper:
+
+```
+spack repo add https://github.com/Chrismarsh/spack-repo.git
+spack install py-windmapper
+```
+
+## Pip
+This is a harder way to get Windmapper.
 
 The default ``pip install windmapper`` will build windmapper without Windninja. However Windninja is required to run.
 
@@ -24,4 +34,4 @@ Documentation and full instructions on use can be found [here](https://windmappe
 # Implimentation
 
 The directory `implementation/` contains a jupyter notebook with an example implimentation of the code. It is not 
-vectorized to aid in readability. However, this makes it very very slow!
+vectorized to aid in readability. However, this makes it very, very slow!
