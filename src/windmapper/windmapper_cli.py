@@ -60,20 +60,24 @@ def main():
 
     # path to Wind Ninja executable
 
-    # default path assumes that WN is on $PATH
-    wn_exe = shutil.which('WindNinja_cli')
+    # Priority: explicit configuration, environment, then PATH.
+    requested = (
+        getattr(X, "wn_exe", None)
+        or os.environ.get("WINDNINJA_EXE")
+        or "WindNinja_cli"
+    )
 
-    if hasattr(X, 'wn_exe'):
-        wn_exe = X.wn_exe
+    wn_exe = shutil.which(os.path.expanduser(os.fspath(requested)))
 
-    if not os.path.exists(wn_exe):
-        if hasattr(X, 'wn_exe'):
-            print('ERROR: Path to WindNinja_cli not found. Confirm `wn_exe` config option is correct.')
-            print(f'Path = {wn_exe}')
-        else:
-            print(
-                'ERROR: WindNinja_cli not found on $PATH. Ensure it is is or  Consider specifying a `wn_exe` config option')
-        exit(-1)
+    if wn_exe is None:
+        raise FileNotFoundError(
+            f"WindNinja executable not found or not executable: {requested!r}. "
+            "Set wn_exe in the configuration, set WINDNINJA_EXE, "
+            "or put WindNinja_cli on PATH."
+        )
+
+    # Resolve Spack view symlinks before deriving the data directory.
+    wn_exe = os.path.realpath(wn_exe)
 
     MPI_exec_str = None
     if hasattr(X, 'MPI_exec_str'):
