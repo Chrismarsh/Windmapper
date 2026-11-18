@@ -17,6 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import math
+
 import elevation
 import pdb, os, shutil
 import subprocess
@@ -30,6 +32,7 @@ from tqdm import tqdm
 import cloudpickle
 from mpi4py import MPI
 from . import windmapper_utls as wm
+from .dem import prepare_existing_dem, tile_window
 
 
 
@@ -241,126 +244,15 @@ write_farsite_atm = false """
     name_utm = 'ref-DEM-proj'
     fic_lcc = user_output_dir + '/' + name_utm + '.tif'
 
-    # LCC_proj = '+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45'
-    LCC_proj = None
     if use_existing_dem:
-
-        # if we are using a user-provided dem, ensure there are no NoData values that border the
-        # DEM which will cause issues and ensure it is rectangular
-        print('Preparing input DEM')
-
-        # mask data values
-        print('...',end='')
-        exec_str = """gdal_calc.py -A %s --outfile %s --NoDataValue 0 --calc="1*(A>-100)" """ % (
-            dem_filename, user_output_dir + 'out.tif')
-        subprocess.check_call([exec_str],   shell=True)
-        print('25...', end='')
-
-        # convert to shp file
-        exec_str = """gdal_polygonize.py -8 -b 1 -f "ESRI Shapefile" %s %s/pols """ % (
-            user_output_dir + 'out.tif', user_output_dir)
-        subprocess.check_call([exec_str],  shell=True)
-        print('50...', end='')
-
-        # #
-        # # driver = ogr.GetDriverByName('ESRI Shapefile')
-        # # dataSource = driver.Open('windmapper_config/pols/out.shp', 0)
-        # # layer = dataSource.GetLayer()
-        # # feat = layer.GetFeature(0)
-        # # geom = feat.GetGeomFieldRef(0)
-        # #
-        # # (minX, maxX, minY, maxY) = geom.GetEnvelope()
-        #
-        # with open('%s/pols' % user_output_dir, 'r') as file:
-        #     poly = json.load(file)
-        #
-        # coords = poly['features'][0]['geometry']['coordinates'][0]
-        # c = np.array(coords)
-        # # [0] = lon, [1] = lat
-        # bbox = [min(coords, key=lambda x: x[0]),
-        #         max(coords, key=lambda x: x[0]),
-        #         min(coords, key=lambda x: x[1]),
-        #         max(coords, key=lambda x: x[1])]
-        # bbox = np.array(bbox)
-        #
-        # # pick the middle
-        # lons = np.sort(bbox[:, 0])[1:3]
-        # lats = np.sort(bbox[:, 1])[1:3]
-        #
-        # lat_min = X.lat_min = min(lats)
-        # lat_max = X.lat_max = max(lats)
-        # lon_min = X.lon_min = min(lons)
-        # lon_max = X.lon_max = max(lons)
-        #
-        # srs_out = osr.SpatialReference()
-        # srs_out.ImportFromEPSG(4326)
-        #
-        # pts_to_shp([[lat_max, lon_min],
-        #             [lat_max, lon_max],
-        #             [lat_min, lon_max],
-        #             [lat_min, lon_min]],
-        #            os.path.join(user_output_dir, 'shp', 'test.shp'),
-        #            srs_out.ExportToProj4(),
-        #            )
-        #
-        #
-
-
-        # clip original with the shpfile to get the no data only zone
-        exec_str = """%sgdalwarp -of GTiff -cutline %s/pols/out.shp -crop_to_cutline -dstalpha %s %s """ % (gdal_prefix,
-            user_output_dir, dem_filename, fic_lcc)
-        subprocess.check_call([exec_str], shell=True)
-        print('75...', end='')
-        shutil.rmtree("%s/pols" % user_output_dir)
-        os.remove("%s/out.tif" % user_output_dir)
-        print('100', end='')
-        print(' - done')
-
-        # Get the bounding box so we can write out shp file later
-        # also serves to test that we have a geo referenced input
-        try:
-            info = gdal.Info(fic_lcc, format='json')
-            lon = [info['wgs84Extent']['coordinates'][0][x][0] for x in range(0,4)]
-            lat = [info['wgs84Extent']['coordinates'][0][x][1] for x in range(0,4)]
-
-            lat_min = X.lat_min = min(lat)
-            lat_max = X.lat_max = max(lat)
-            lon_min = X.lon_min = min(lon)
-            lon_max = X.lon_max = max(lon)
-
-            fac = 0.1  # Expansion factor to make sure that the downloaded SRTM tile is large enough
-
-            # Properties of the bounding box
-            delta_lat = lat_max - lat_min
-            delta_lon = lon_max - lon_min
-
-            # This is a small extent than what we have so we ensure perfect coverage
-            lon_min = lon_min + delta_lon * fac
-            lat_min = lat_min + delta_lat * fac
-            lon_max = lon_max - delta_lon * fac
-            lat_max = lat_max - delta_lat * fac
-
-        except:
-            print('There is no coordinate defined for this input tif.')
-            exit(-1)
-
-        # we may wish to skip this for specific inputs
-        # a tight square UTM domain will be slightly offset in merc causing WN issues
-        if not skip_mercator_proj:
-            #ensure we have a rectangular domain
-            LCC_proj = '+proj=merc +lat_ts=%.30f' % ((lat_min + lat_max) / 2.0)
-
-            # convert this to our custom mercator projection
-            exec_str = '%sgdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -r bilinear  '
-            com_string = exec_str % (gdal_prefix, fic_lcc, fic_lcc+'.tmp.tif', LCC_proj)
-            subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-
-            os.remove("%s" % fic_lcc)
-            #ensure we have a float32 dataset
-            exec_str = '%sgdal_translate -ot Float32  %s %s' % (gdal_prefix, fic_lcc+'.tmp.tif', fic_lcc)
-            subprocess.check_call([exec_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-            os.remove(fic_lcc+'.tmp.tif')
-
+        ds = prepare_existing_dem(dem_filename, fic_lcc, skip_mercator_proj,
+                                  getattr(X, 'dem_anchor_lonlat', None))
+        gt = ds.GetGeoTransform()
+        xmin, ymax = gt[0], gt[3]
+        xmax = xmin + ds.RasterXSize * gt[1]
+        ymin = ymax + ds.RasterYSize * gt[5]
+        bbox = [[ymax, xmin], [ymax, xmax], [ymin, xmax], [ymin, xmin]]
+        bbox_srs = ds.GetProjection()
     else:
 
         # need to ensure that we request a square domain in LCC projection
@@ -424,47 +316,20 @@ write_farsite_atm = false """
 
         os.remove(fic_lcc+'.tmp.tif')
 
+        ds = gdal.Open(fic_lcc)
+        gt = ds.GetGeoTransform()
+        bbox = [[lat_max, lon_min], [lat_max, lon_max],
+                [lat_min, lon_max], [lat_min, lon_min]]
+        bbox_srs = 'EPSG:4326'
+        t_4326_to_merc = Transformer.from_crs(bbox_srs, LCC_proj, always_xy=True)
+        x_merc, y_merc = t_4326_to_merc.transform(
+            [point[1] for point in bbox], [point[0] for point in bbox])
+        xmin, xmax = min(x_merc), max(x_merc)
+        ymin, ymax = min(y_merc), max(y_merc)
 
-    srs_out = osr.SpatialReference()
-    srs_out.ImportFromEPSG(4326)
-
-    pts_to_shp([[lat_max, lon_min],
-                [lat_max, lon_max],
-                [lat_min, lon_max],
-                [lat_min, lon_min]],
-               os.path.join(user_output_dir,'shp','user_bbox.shp'),
-               srs_out.ExportToProj4(),
-               )
-
-    ds = gdal.Open(fic_lcc)
-    wkt = ds.GetProjection()
-    srs = osr.SpatialReference()
-    srs.ImportFromWkt(wkt)
-
-    if LCC_proj is None:
-        LCC_proj = srs.ExportToProj4()
-
-    band = ds.GetRasterBand(1)
-    gt = ds.GetGeoTransform()
-
-    t_4326_to_merc = Transformer.from_crs("epsg:4326", LCC_proj, always_xy=True)
-    x_merc, y_merc = t_4326_to_merc.transform(
-        [lon_min, lon_max, lon_min, lon_max],
-        [lat_min, lat_min, lat_max, lat_max],
-    )
-
-    xmin = min(x_merc)
-    xmax = max(x_merc)
-    ymin = min(y_merc)
-    ymax = max(y_merc)
-
-
-    is_geographic = srs.IsGeographic()
-    if is_geographic:
-        raise Exception('Input DEM must be projected ')
-
-    pixel_width = gt[1]
-    pixel_height = -gt[5]
+    cutline = os.path.join(user_output_dir, 'shp', 'user_bbox.shp')
+    pts_to_shp(bbox, cutline, bbox_srs)
+    pixel_width, pixel_height = gt[1], -gt[5]
 
     lenx = xmax-xmin
     leny = ymax-ymin
@@ -472,8 +337,13 @@ write_farsite_atm = false """
     len_wn = res_wind * nres
 
     # Number of Wind Ninja tiles
-    nopt_x = int(lenx // len_wn + 1)
-    nopt_y = int(leny // len_wn + 1)
+    if use_existing_dem:
+        # Balanced integer pixel windows, including exact multiples of the target size.
+        nopt_x = min(ds.RasterXSize, max(1, math.ceil(ds.RasterXSize * pixel_width / len_wn)))
+        nopt_y = min(ds.RasterYSize, max(1, math.ceil(ds.RasterYSize * pixel_height / len_wn)))
+    else:
+        nopt_x = int(lenx // len_wn + 1)
+        nopt_y = int(leny // len_wn + 1)
 
     nx = lenx/pixel_width / nopt_x
     ny = leny/pixel_height / nopt_y
@@ -482,7 +352,17 @@ write_farsite_atm = false """
         # DEM is small enough for WN
         name_tmp = 'tmp_0_0'
         fic_tmp = user_output_dir + name_tmp + ".tif"
-        shutil.copy(fic_lcc, fic_tmp)
+        gdal.Translate(fic_tmp, ds)
+
+    elif use_existing_dem:
+        for i, j in itertools.product(range(nopt_x), range(nopt_y)):
+            window = tile_window(ds.RasterXSize, ds.RasterYSize, i, j, nopt_x, nopt_y, nadd)
+            gdal.Translate(os.path.join(user_output_dir, f'tmp_{i}_{j}.tif'), ds, srcWin=window)
+            x, y, w, h = window
+            west, north = gdal.ApplyGeoTransform(gt, x, y)
+            east, south = gdal.ApplyGeoTransform(gt, x + w, y + h)
+            pts_to_shp([[north, west], [north, east], [south, east], [south, west]],
+                       os.path.join(user_output_dir, 'shp', f'utm_{i}_{j}.shp'), bbox_srs)
 
     else:
 
@@ -625,16 +505,9 @@ write_farsite_atm = false """
                 subprocess.check_call([cmd], stdout=subprocess.PIPE,
                                       shell=True)
 
-                srs_out = osr.SpatialReference()
-                srs_out.ImportFromEPSG(4326)
-                exec_str = '%sgdalwarp -overwrite -te %f %f %f %f -r "cubicspline" -et 0 -cutline %s -crop_to_cutline -dstnodata -9999 -t_srs "%s" %s %s'
-                com_string = exec_str % (gdal_prefix,
-                                         X.lon_min, X.lat_min, X.lon_max, X.lat_max,
-                                         os.path.join(user_output_dir,'shp', 'user_bbox.shp'),
-                                         srs_out.ExportToProj4(),
-                                         name_tif+'.tmp.tif',
-                                         name_tif+'.tif')
-                subprocess.check_call([com_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+                gdal.Warp(name_tif + '.tif', name_tif + '.tmp.tif',
+                          dstSRS='EPSG:4326', cutlineDSName=cutline, cropToCutline=True,
+                          resampleAlg='cubicspline', errorThreshold=0, dstNodata=-9999)
                 os.remove(name_tif+'.tmp.tif')
 
             pbar.update(1)
@@ -662,7 +535,7 @@ def pts_to_shp(points, fname, proj):
     shp_file = driver.CreateDataSource(fname)
 
     srs_out = osr.SpatialReference()
-    srs_out.ImportFromProj4(proj)
+    srs_out.SetFromUserInput(proj)
 
     layer = shp_file.CreateLayer('mesh', srs_out, ogr.wkbPolygon)
     layer.CreateField(ogr.FieldDefn('Extent', ogr.OFTReal))

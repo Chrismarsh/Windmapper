@@ -3,9 +3,6 @@ Configuration
 
 Windmapper depends heavily upon GDAL to handle the geospatial data. Any 1-band raster that GDAL can open is valid. Input rasters need to have a coordinate system.
 
-.. warning::
-    There cannot be missing data in the raster
-
 .. note::
    Only the items in the `Required`_ section are needed for a valid configuration file.
 
@@ -34,13 +31,29 @@ User-supplied DEM
 
     Absolute or relative path to the DEM to open. Any GDAL supported single-band raster is supported. Must have a coordinate system.
 
-.. warning::
+WindMapper selects the largest rectangular window of valid elevations on the
+projected simulation grid. All tiles and their overlaps come from this window.
+The reference DEM and the output cutline cover the selected rectangle. Valid
+terrain outside that rectangle is excluded.
 
-    A user-supplied DEM must be in UTM coordinates.
+.. confval:: dem_anchor_lonlat
+
+    Optional WGS84 point given as ``(longitude, latitude)``. Set this to require
+    the selected rectangle to contain a site. WindMapper reports an error if
+    the point falls outside the projected grid or on missing terrain.
+
+.. confval:: skip_mercator_proj
+
+    :default: False
+
+    By default WindMapper prepares a local Mercator grid before selecting the
+    rectangle. Set this to ``True`` to use the supplied DEM's projected CRS in
+    metres. North-up, square pixels are copied directly. Rotated or
+    non-square pixels are resampled to a north-up, square grid first.
 
 .. code:: python
 
-    # Flag to use existing DEM (DEM must be in UTM for WindNinja)
+    # Use a georeferenced elevation raster
     use_existing_dem = True
 
     # name of the DEM file if use_existing_dem = True
